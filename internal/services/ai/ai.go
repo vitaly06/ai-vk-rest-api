@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/vitaly06/ai-vk-bot/internal/config"
@@ -55,8 +56,13 @@ func (s *Service) Complete(ctx context.Context, history []models.AIMessage) (str
 	}
 	messages = append(messages, history...)
 
+	model := s.cfg.Model
+	if strings.EqualFold(s.cfg.Provider, "yandex") {
+		model = resolveYandexModel(model, s.cfg.ProjectID)
+	}
+
 	body, err := json.Marshal(chatRequest{
-		Model:     s.cfg.Model,
+		Model:     model,
 		Messages:  messages,
 		MaxTokens: s.cfg.MaxTokens,
 	})
@@ -71,6 +77,9 @@ func (s *Service) Complete(ctx context.Context, history []models.AIMessage) (str
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+s.cfg.APIKey)
+	if strings.EqualFold(s.cfg.Provider, "yandex") && s.cfg.ProjectID != "" {
+		req.Header.Set("OpenAI-Project", s.cfg.ProjectID)
+	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -109,4 +118,14 @@ func (s *Service) Complete(ctx context.Context, history []models.AIMessage) (str
 		return "", fmt.Errorf("ai: empty response")
 	}
 	return cr.Choices[0].Message.Content, nil
+}
+
+func resolveYandexModel(model, folderID string) string {
+	if strings.HasPrefix(model, "gpt://") {
+		return model
+	}
+	if folderID == "" {
+		return model
+	}
+	return "gpt://" + folderID + "/" + strings.TrimPrefix(model, "/")
 }

@@ -44,6 +44,7 @@ type AIConfig struct {
 	Provider     string
 	BaseURL      string
 	APIKey       string
+	ProjectID    string
 	Model        string
 	MaxTokens    int
 	SystemPrompt string
@@ -66,6 +67,26 @@ type BotConfig struct {
 }
 
 func Load() *Config {
+	aiProvider := strings.ToLower(getEnv("AI_PROVIDER", "openai"))
+	aiBaseURL := os.Getenv("AI_BASE_URL")
+	if aiBaseURL == "" {
+		if aiProvider == "yandex" {
+			aiBaseURL = "https://ai.api.cloud.yandex.net/v1"
+		} else {
+			aiBaseURL = "https://api.openai.com/v1"
+		}
+	}
+	aiAPIKey := firstNonEmpty(os.Getenv("AI_API_KEY"), os.Getenv("YANDEX_API_KEY"))
+	aiProjectID := firstNonEmpty(os.Getenv("AI_PROJECT_ID"), os.Getenv("YANDEX_FOLDER_ID"))
+	aiModel := os.Getenv("AI_MODEL")
+	if aiModel == "" {
+		if aiProvider == "yandex" {
+			aiModel = "yandexgpt-lite/latest"
+		} else {
+			aiModel = "gpt-4o"
+		}
+	}
+
 	return &Config{
 		VK: VKConfig{
 			Token:             mustEnv("VK_TOKEN"),
@@ -88,10 +109,11 @@ func Load() *Config {
 			DB:       getEnvInt("REDIS_DB", 0),
 		},
 		AI: AIConfig{
-			Provider:     getEnv("AI_PROVIDER", "openai"),
-			BaseURL:      getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
-			APIKey:       os.Getenv("AI_API_KEY"),
-			Model:        getEnv("AI_MODEL", "gpt-4o"),
+			Provider:     aiProvider,
+			BaseURL:      aiBaseURL,
+			APIKey:       aiAPIKey,
+			ProjectID:    aiProjectID,
+			Model:        aiModel,
 			MaxTokens:    getEnvInt("AI_MAX_TOKENS", 2048),
 			SystemPrompt: loadSystemPrompt(),
 		},
@@ -152,6 +174,15 @@ func getEnvInt(key string, def int) int {
 		}
 	}
 	return def
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func parseIntList(s string) []int {
