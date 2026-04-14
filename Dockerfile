@@ -11,5 +11,6 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /app/bot .
 COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/system_prompt.txt ./system_prompt.txt
 
 ENTRYPOINT ["./bot"]
