@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -54,24 +56,24 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.base.send(ctx, u.VKID, "Редактирование отменено.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
-	if u.State == models.BotState(adminFAQAddState) && strings.TrimSpace(text) != "" {
+	if cmd == "" && u.State == models.BotState(adminFAQAddState) && strings.TrimSpace(text) != "" {
 		h.handleFAQAddInput(ctx, u, text)
 		return
 	}
-	if strings.HasPrefix(string(u.State), adminFAQEditStatePrefix) && strings.TrimSpace(text) != "" {
+	if cmd == "" && strings.HasPrefix(string(u.State), adminFAQEditStatePrefix) && strings.TrimSpace(text) != "" {
 		h.handleFAQEditInput(ctx, u, text)
 		return
 	}
-	if u.State == models.BotState(adminQuestionAddState) && strings.TrimSpace(text) != "" {
+	if cmd == "" && u.State == models.BotState(adminQuestionAddState) && strings.TrimSpace(text) != "" {
 		h.handleQuestionAddInput(ctx, u, text)
 		return
 	}
-	if strings.HasPrefix(string(u.State), adminQuestionEditStatePrefix) && strings.TrimSpace(text) != "" {
+	if cmd == "" && strings.HasPrefix(string(u.State), adminQuestionEditStatePrefix) && strings.TrimSpace(text) != "" {
 		h.handleQuestionEditInput(ctx, u, text)
 		return
 	}
-	if strings.HasPrefix(string(u.State), adminEditStatePrefix) && strings.TrimSpace(text) != "" {
-		h.handleSettingInput(ctx, u, text)
+	if cmd == "" && strings.HasPrefix(string(u.State), adminEditStatePrefix) && (strings.TrimSpace(text) != "" || len(msg.Attachments) > 0) {
+		h.handleSettingInput(ctx, u, text, msg)
 		return
 	}
 
@@ -771,7 +773,7 @@ func (h *AdminHandler) handleEditSettingStart(ctx context.Context, u *models.Use
 		keyboards.BackOnly())
 }
 
-func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, text string) {
+func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, text string, msg object.MessagesMessage) {
 	key := strings.TrimSpace(strings.TrimPrefix(string(u.State), adminEditStatePrefix))
 	value := strings.TrimSpace(text)
 	if key == "" {
@@ -779,7 +781,16 @@ func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, t
 		h.base.send(ctx, u.VKID, "❌ Не удалось определить ключ настройки.", keyboards.AdminMenu())
 		return
 	}
+	if key == models.SettingSystemPrompt {
+		if fileValue, ok := extractTxtAttachmentContent(msg); ok {
+			value = strings.TrimSpace(fileValue)
+		}
+	}
 	if value == "" {
+		if key == models.SettingSystemPrompt {
+			h.base.send(ctx, u.VKID, "⚠️ Отправьте текст или TXT-файл с новым промптом.", keyboards.BackOnly())
+			return
+		}
 		h.base.send(ctx, u.VKID, "⚠️ Пустое значение не сохраняется.", keyboards.BackOnly())
 		return
 	}
@@ -795,6 +806,28 @@ func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, t
 		Details: fmt.Sprintf("key=%s", key),
 	})
 	h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Настройка `%s` обновлена.", key), keyboards.AdminSettingsEditorMenu())
+}
+
+func extractTxtAttachmentContent(msg object.MessagesMessage) (string, bool) {
+	for _, a := range msg.Attachments {
+		if a.Type != "doc" {
+			continue
+		}
+		if !strings.EqualFold(a.Doc.Ext, "txt") || strings.TrimSpace(a.Doc.URL) == "" {
+			continue
+		}
+		resp, err := http.Get(a.Doc.URL)
+		if err != nil {
+			continue
+		}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			continue
+		}
+		return string(body), true
+	}
+	return "", false
 }
 
 func isEditableSettingKey(key string) bool {
