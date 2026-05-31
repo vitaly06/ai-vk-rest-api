@@ -31,7 +31,19 @@ type AdminHandler struct {
 	handlers     *Handlers
 }
 
+const adminEditStatePrefix = "admin_edit:"
+
 func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
+	if strings.HasPrefix(string(u.State), adminEditStatePrefix) && cmd == "back" {
+		h.userSvc.UpdateState(ctx, u.VKID, "")
+		h.base.send(ctx, u.VKID, "Editing cancelled.", keyboards.AdminSettingsEditorMenu())
+		return
+	}
+	if strings.HasPrefix(string(u.State), adminEditStatePrefix) && strings.TrimSpace(text) != "" {
+		h.handleSettingInput(ctx, u, text)
+		return
+	}
+
 	switch cmd {
 	case "admin_invites":
 		h.handleInviteMenu(ctx, u)
@@ -105,6 +117,8 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.handleMetrics(ctx, u)
 	case "admin_settings":
 		h.handleSettingsMenu(ctx, u)
+	case "admin_edit_setting":
+		h.handleEditSettingStart(ctx, u, msg.Payload)
 	case "admin_mods":
 		h.handleModsMenu(ctx, u)
 	case "approve_request":
@@ -250,8 +264,8 @@ func (h *AdminHandler) handleSettingsMenu(ctx context.Context, u *models.User) {
 		welcome = "(не задано)"
 	}
 	h.base.send(ctx, u.VKID,
-		"⚙️ Настройки бота\n\nЧтобы изменить приветственное сообщение, напишите:\n/setwelcome <текст>\n\nТекущее:\n"+welcome,
-		keyboards.AdminMenu())
+		"⚙️ Настройки бота\n\nВыберите параметр в меню ниже. После выбора отправьте новое значение одним сообщением.\n\nТекущее welcome:\n"+welcome,
+		keyboards.AdminSettingsEditorMenu())
 }
 
 func (h *AdminHandler) handleModsMenu(ctx context.Context, u *models.User) {
@@ -329,6 +343,67 @@ func (h *AdminHandler) handleTextCommand(ctx context.Context, u *models.User, te
 	default:
 		// Показываем меню администратора
 		h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
+	}
+}
+
+func (h *AdminHandler) handleEditSettingStart(ctx context.Context, u *models.User, payloadJSON string) {
+	var p struct {
+		Key string `json:"key"`
+	}
+	if err := json.Unmarshal([]byte(payloadJSON), &p); err != nil || strings.TrimSpace(p.Key) == "" {
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить настройку.", keyboards.AdminSettingsEditorMenu())
+		return
+	}
+	if !isEditableSettingKey(p.Key) {
+		h.base.send(ctx, u.VKID, "⚠️ Эту настройку нельзя менять из панели.", keyboards.AdminSettingsEditorMenu())
+		return
+	}
+
+	current, _ := h.settingsRepo.Get(ctx, p.Key)
+	h.userSvc.UpdateState(ctx, u.VKID, models.BotState(adminEditStatePrefix+p.Key))
+	h.base.send(ctx, u.VKID,
+		fmt.Sprintf("✏️ Редактирование `%s`\nТекущее значение:\n%s\n\nПришлите новое значение одним сообщением.", p.Key, current),
+		keyboards.BackOnly())
+}
+
+func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, text string) {
+	key := strings.TrimSpace(strings.TrimPrefix(string(u.State), adminEditStatePrefix))
+	value := strings.TrimSpace(text)
+	if key == "" {
+		h.userSvc.UpdateState(ctx, u.VKID, "")
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить ключ настройки.", keyboards.AdminMenu())
+		return
+	}
+	if value == "" {
+		h.base.send(ctx, u.VKID, "⚠️ Пустое значение не сохраняется.", keyboards.BackOnly())
+		return
+	}
+
+	if err := h.settingsRepo.Set(ctx, key, value); err != nil {
+		h.base.send(ctx, u.VKID, "❌ Ошибка сохранения.", keyboards.AdminMenu())
+		return
+	}
+	h.userSvc.UpdateState(ctx, u.VKID, "")
+	h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{
+		ActorID: u.VKID,
+		Action:  "set_setting",
+		Details: fmt.Sprintf("key=%s", key),
+	})
+	h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Настройка `%s` обновлена.", key), keyboards.AdminSettingsEditorMenu())
+}
+
+func isEditableSettingKey(key string) bool {
+	switch key {
+	case models.SettingWelcomeMessage,
+		models.SettingConsentText,
+		models.SettingFAQText,
+		models.SettingAboutText,
+		models.SettingSystemPrompt,
+		models.SettingDefaultRequestLimit,
+		models.SettingDefaultCooldownSecs:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -471,6 +546,9 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 			role = "assistant"
 		}
 		aiMessages = append(aiMessages, models.AIMessage{Role: role, Content: m.Content})
+	}
+	if sp, _ := h.settingsRepo.Get(ctx, models.SettingSystemPrompt); strings.TrimSpace(sp) != "" {
+		aiMessages = append([]models.AIMessage{{Role: "system", Content: sp}}, aiMessages...)
 	}
 
 	h.mon.RecordAICall()

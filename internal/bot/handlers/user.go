@@ -192,6 +192,9 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		}
 		aiMessages = append(aiMessages, models.AIMessage{Role: role, Content: m.Content})
 	}
+	if sp, _ := h.settingsRepo.Get(ctx, models.SettingSystemPrompt); strings.TrimSpace(sp) != "" {
+		aiMessages = append([]models.AIMessage{{Role: "system", Content: sp}}, aiMessages...)
+	}
 
 	// Запрос к AI
 	h.mon.RecordAICall()

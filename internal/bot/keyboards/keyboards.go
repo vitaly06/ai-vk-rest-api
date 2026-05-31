@@ -127,6 +127,31 @@ func AdminMenu() *Keyboard {
 	}
 }
 
+// AdminSettingsEditorMenu - quick settings editor
+func AdminSettingsEditorMenu() *Keyboard {
+	return &Keyboard{
+		OneTime: false,
+		Buttons: [][]Button{
+			{
+				btn("Welcome", "secondary", `{"cmd":"admin_edit_setting","key":"welcome_message"}`),
+				btn("Consent", "secondary", `{"cmd":"admin_edit_setting","key":"consent_text"}`),
+			},
+			{
+				btn("FAQ", "secondary", `{"cmd":"admin_edit_setting","key":"faq_text"}`),
+				btn("About", "secondary", `{"cmd":"admin_edit_setting","key":"about_text"}`),
+			},
+			{
+				btn("System Prompt", "secondary", `{"cmd":"admin_edit_setting","key":"system_prompt"}`),
+				btn("Default Limit", "secondary", `{"cmd":"admin_edit_setting","key":"default_request_limit"}`),
+			},
+			{
+				btn("Default Cooldown", "secondary", `{"cmd":"admin_edit_setting","key":"default_cooldown_secs"}`),
+				btn("Back to Admin", "primary", `{"cmd":"admin_panel"}`),
+			},
+		},
+	}
+}
+
 // AdminChatMenu — меню когда админ в режиме диалога с AI
 func AdminChatMenu() *Keyboard {
 	return &Keyboard{

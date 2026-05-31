@@ -48,7 +48,8 @@ type chatResponse struct {
 func (s *Service) Complete(ctx context.Context, history []models.AIMessage) (string, error) {
 	messages := make([]models.AIMessage, 0, len(history)+1)
 	// Системный промпт всегда первым
-	if s.cfg.SystemPrompt != "" {
+	hasSystemInHistory := len(history) > 0 && strings.EqualFold(history[0].Role, "system")
+	if s.cfg.SystemPrompt != "" && !hasSystemInHistory {
 		messages = append(messages, models.AIMessage{
 			Role:    "system",
 			Content: s.cfg.SystemPrompt,

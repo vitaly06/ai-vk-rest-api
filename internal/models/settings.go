@@ -13,6 +13,7 @@ type BotSetting struct {
 const (
 	SettingWelcomeMessage      = "welcome_message"
 	SettingConsentText         = "consent_text"
+	SettingSystemPrompt        = "system_prompt"
 	SettingDefaultCooldownSecs = "default_cooldown_secs"
 	SettingDefaultRequestLimit = "default_request_limit"
 	SettingRegistrationOpen    = "registration_open"
