@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log/slog"
+	"unicode/utf8"
 
 	"github.com/SevereCloud/vksdk/v3/api"
 	"github.com/SevereCloud/vksdk/v3/api/params"
@@ -87,17 +88,47 @@ func (b *baseHandler) send(ctx context.Context, vkID int64, text string, kb *key
 
 // send — вспомогательная функция отправки сообщения
 func send(vk *api.VK, vkID int64, text string, kb *keyboards.Keyboard) {
-	b := params.NewMessagesSendBuilder()
-	b.UserID(int(vkID))
-	b.Message(text)
-	b.RandomID(randomID())
-	if kb != nil {
-		b.Keyboard(kb.Serialize())
+	const maxVKMessageLen = 3500 // reserve headroom below VK hard limit
+	parts := splitByRunes(text, maxVKMessageLen)
+	if len(parts) == 0 {
+		parts = []string{""}
 	}
-	_, err := vk.MessagesSend(b.Params)
-	if err != nil {
-		slog.Error("send message", "vk_id", vkID, "err", err)
+
+	for i, part := range parts {
+		b := params.NewMessagesSendBuilder()
+		b.UserID(int(vkID))
+		b.Message(part)
+		b.RandomID(randomID())
+		// Attach keyboard only to the last chunk so controls stay visible.
+		if kb != nil && i == len(parts)-1 {
+			b.Keyboard(kb.Serialize())
+		}
+		_, err := vk.MessagesSend(b.Params)
+		if err != nil {
+			slog.Error("send message", "vk_id", vkID, "err", err)
+			return
+		}
 	}
+}
+
+func splitByRunes(text string, maxRunes int) []string {
+	if maxRunes <= 0 || text == "" {
+		return []string{text}
+	}
+	if utf8.RuneCountInString(text) <= maxRunes {
+		return []string{text}
+	}
+
+	runes := []rune(text)
+	parts := make([]string, 0, (len(runes)/maxRunes)+1)
+	for start := 0; start < len(runes); start += maxRunes {
+		end := start + maxRunes
+		if end > len(runes) {
+			end = len(runes)
+		}
+		parts = append(parts, string(runes[start:end]))
+	}
+	return parts
 }
 
 // randomID генерирует уникальный random_id для VK API
