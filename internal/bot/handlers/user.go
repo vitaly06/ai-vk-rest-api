@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/SevereCloud/vksdk/v3/object"
@@ -17,14 +18,12 @@ import (
 	userSvc "github.com/vitaly06/ai-vk-bot/internal/services/user"
 )
 
-// РђРЅРєРµС‚Р° вЂ” РІРѕРїСЂРѕСЃС‹ РїРѕ РїРѕСЂСЏРґРєСѓ
 var questionnaire = []string{
-	"РљР°Рє РІР°СЃ Р·РѕРІСѓС‚?",
-	"Р§РµРј РІС‹ Р·Р°РЅРёРјР°РµС‚РµСЃСЊ?",
-	"РљР°Рє РІС‹ СѓР·РЅР°Р»Рё Рѕ РЅР°СЃ?",
+	"Как вас зовут?",
+	"Чем вы занимаетесь?",
+	"Как вы узнали о нас?",
 }
 
-// UserHandler вЂ” РѕР±СЂР°Р±РѕС‚С‡РёРє СЃРѕРѕР±С‰РµРЅРёР№ РѕР±С‹С‡РЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 type UserHandler struct {
 	base         *baseHandler
 	userSvc      *userSvc.Service
@@ -53,52 +52,49 @@ func (h *UserHandler) Handle(ctx context.Context, u *models.User, msg object.Mes
 func (h *UserHandler) handleWelcome(ctx context.Context, u *models.User) {
 	welcome, _ := h.settingsRepo.Get(ctx, models.SettingWelcomeMessage)
 	if welcome == "" {
-		welcome = "рџ‘‹ Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ! РЇ РІР°С€ AI-РїРѕРјРѕС‰РЅРёРє."
+		welcome = "Добро пожаловать! Я ваш AI-помощник."
 	}
 
 	consentText, _ := h.settingsRepo.Get(ctx, models.SettingConsentText)
 	if consentText == "" {
-		consentText = "рџ“‹ Р”Р»СЏ РїСЂРѕРґРѕР»Р¶РµРЅРёСЏ РЅРµРѕР±С…РѕРґРёРјРѕ СЃРѕРіР»Р°СЃРёРµ РЅР° РѕР±СЂР°Р±РѕС‚РєСѓ РїРµСЂСЃРѕРЅР°Р»СЊРЅС‹С… РґР°РЅРЅС‹С… Рё РїРѕР»СѓС‡РµРЅРёРµ СЂР°СЃСЃС‹Р»РѕРє."
+		consentText = "Для продолжения необходимо согласие на обработку персональных данных и получение рассылок."
 	}
 
 	h.base.send(ctx, u.VKID, welcome+"\n\n"+consentText, keyboards.ConsentKeyboard())
-	h.userSvc.UpdateState(ctx, u.VKID, models.StateConsent)
+	_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateConsent)
 }
 
 func (h *UserHandler) handleConsent(ctx context.Context, u *models.User, cmd string) {
 	switch cmd {
 	case "consent_accept":
-		h.userSvc.SaveConsent(ctx, u.VKID, true, false)
-		h.base.send(ctx, u.VKID, "РҐРѕС‚РёС‚Рµ РїРѕР»СѓС‡Р°С‚СЊ РїРѕР»РµР·РЅС‹Рµ СЂР°СЃСЃС‹Р»РєРё РѕС‚ РЅР°СЃ?", keyboards.MailingConsentKeyboard())
-		// РџРµСЂРµС…РѕРґРёРј Рє РІС‹Р±РѕСЂСѓ СЂР°СЃСЃС‹Р»РєРё (РїСЂРѕРјРµР¶СѓС‚РѕС‡РЅС‹Р№ С€Р°Рі)
+		_ = h.userSvc.SaveConsent(ctx, u.VKID, true, false)
+		h.base.send(ctx, u.VKID, "Хотите получать полезные рассылки?", keyboards.MailingConsentKeyboard())
 	case "mailing_yes":
-		h.userSvc.SaveConsent(ctx, u.VKID, true, true)
+		_ = h.userSvc.SaveConsent(ctx, u.VKID, true, true)
 		h.startQuestionnaire(ctx, u)
 	case "mailing_no":
 		h.startQuestionnaire(ctx, u)
 	case "consent_decline":
-		h.base.send(ctx, u.VKID,
-			"вќЊ Р‘РµР· СЃРѕРіР»Р°СЃРёСЏ РЅР° РѕР±СЂР°Р±РѕС‚РєСѓ РґР°РЅРЅС‹С… РїРѕР»СЊР·РѕРІР°РЅРёРµ Р±РѕС‚РѕРј РЅРµРґРѕСЃС‚СѓРїРЅРѕ. Р’С‹ РјРѕР¶РµС‚Рµ РІРµСЂРЅСѓС‚СЊСЃСЏ РїРѕР·Р¶Рµ.",
-			keyboards.Empty())
+		h.base.send(ctx, u.VKID, "Без согласия пользоваться ботом нельзя.", keyboards.Empty())
 	}
 }
 
 func (h *UserHandler) startQuestionnaire(ctx context.Context, u *models.User) {
 	questions := h.loadQuestionnaireItems(ctx)
 	if len(questions) == 0 {
-		h.userSvc.UpdateState(ctx, u.VKID, models.StateMainChat)
-		h.base.send(ctx, u.VKID, "✅ Можете сразу начать диалог.", keyboards.MainMenu())
+		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
+		h.base.send(ctx, u.VKID, "Выберите режим: Игра или Карта.", keyboards.MainMenu())
 		return
 	}
-	h.userSvc.UpdateState(ctx, u.VKID, models.StateQuestionnaire)
-	h.base.send(ctx, u.VKID, "📝 Небольшая анкета. "+questions[0], keyboards.Empty())
+	_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateQuestionnaire)
+	h.base.send(ctx, u.VKID, "Небольшая анкета. "+questions[0], keyboards.Empty())
 }
 
 func (h *UserHandler) handleQuestionnaire(ctx context.Context, u *models.User, text string) {
 	questions := h.loadQuestionnaireItems(ctx)
 	if len(questions) == 0 {
-		h.userSvc.UpdateState(ctx, u.VKID, models.StateMainChat)
-		h.base.send(ctx, u.VKID, "✅ Можете сразу начать диалог.", keyboards.MainMenu())
+		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
+		h.base.send(ctx, u.VKID, "Выберите режим: Игра или Карта.", keyboards.MainMenu())
 		return
 	}
 
@@ -106,7 +102,7 @@ func (h *UserHandler) handleQuestionnaire(ctx context.Context, u *models.User, t
 	currentQ := len(answers)
 
 	if currentQ < len(questions) {
-		h.userSvc.SaveQAnswer(ctx, u.ID, questions[currentQ], text)
+		_ = h.userSvc.SaveQAnswer(ctx, u.ID, questions[currentQ], text)
 		currentQ++
 	}
 
@@ -115,39 +111,88 @@ func (h *UserHandler) handleQuestionnaire(ctx context.Context, u *models.User, t
 		return
 	}
 
-	h.userSvc.UpdateState(ctx, u.VKID, models.StateMainChat)
-	h.base.send(ctx, u.VKID, "✅ Анкета заполнена! Чем могу помочь?", keyboards.MainMenu())
+	_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
+	h.base.send(ctx, u.VKID, "Анкета заполнена. Теперь можно выбрать режим.", keyboards.MainMenu())
 }
+
 func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
 	switch cmd {
+	case "game_chat":
+		h.enterScenarioMode(ctx, u, models.StateMainChat)
+	case "map_chat":
+		h.enterScenarioMode(ctx, u, models.StateMapChat)
 	case "support":
-		h.userSvc.UpdateState(ctx, u.VKID, models.StateSupport)
-		h.base.send(ctx, u.VKID,
-			"рџ›  Р§Р°С‚ С‚РµС…РЅРёС‡РµСЃРєРѕР№ РїРѕРґРґРµСЂР¶РєРё. РћРїРёС€РёС‚Рµ РїСЂРѕР±Р»РµРјСѓ.",
-			keyboards.BackOnly())
-
+		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateSupport)
+		h.base.send(ctx, u.VKID, "Чат технической поддержки. Опишите проблему.", keyboards.BackOnly())
 	case "payment":
 		h.handlePaymentMenu(ctx, u)
-
 	case "services":
 		h.handleServices(ctx, u)
-
 	case "profile":
 		h.handleProfile(ctx, u)
-
 	case "faq":
 		h.base.send(ctx, u.VKID, h.renderFAQ(ctx), keyboards.MainMenu())
-
 	case "pay_card":
 		h.initiatePayment(ctx, u)
-
 	case "pay_wallet":
 		h.handleWalletPayment(ctx, u)
-
 	default:
-		// РћСЃРЅРѕРІРЅРѕР№ РґРёР°Р»РѕРі СЃ AI
-		h.handleAIChat(ctx, u, text)
+		if u.State == models.StateMainChat || u.State == models.StateMapChat {
+			h.handleAIChat(ctx, u, text)
+			return
+		}
+		h.base.send(ctx, u.VKID, "Выберите режим: Игра или Карта.", keyboards.MainMenu())
 	}
+}
+
+func (h *UserHandler) enterScenarioMode(ctx context.Context, u *models.User, state models.BotState) {
+	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogMain)
+	if err != nil {
+		slog.Error("get dialog for mode", "err", err)
+		h.base.send(ctx, u.VKID, "Не удалось открыть режим. Попробуйте позже.", keyboards.MainMenu())
+		return
+	}
+	_ = h.dialogRepo.ClearHistory(ctx, dialog.ID)
+	_ = h.userSvc.UpdateState(ctx, u.VKID, state)
+
+	reply, err := h.generateModeIntro(ctx, state)
+	if err != nil {
+		slog.Error("generate mode intro", "state", state, "err", err)
+		h.base.send(ctx, u.VKID, "Не удалось запустить режим. Проверьте промпт.", keyboards.MainMenu())
+		return
+	}
+
+	_, _ = h.dialogRepo.SaveMessage(ctx, &models.Message{
+		DialogID: dialog.ID,
+		UserID:   u.ID,
+		Role:     models.MessageRoleAssistant,
+		Type:     models.MessageTypeText,
+		Content:  reply,
+	})
+	h.base.send(ctx, u.VKID, reply, keyboards.MainMenu())
+}
+
+func (h *UserHandler) generateModeIntro(ctx context.Context, state models.BotState) (string, error) {
+	prompt := h.loadPromptForState(ctx, state)
+	if strings.TrimSpace(prompt) == "" {
+		return "", fmt.Errorf("empty prompt for state %s", state)
+	}
+
+	startMessage := "Начни диалог по правилам этого режима."
+	if state == models.StateMainChat {
+		startMessage = "Начни симуляцию по правилам режима. Сначала запроси необходимые данные и затем дай первый ход среды."
+	}
+	if state == models.StateMapChat {
+		startMessage = "Начни режим карты. Сначала запроси исходные данные, нужные для чтения карты, и веди диалог в рамках инструкции."
+	}
+
+	messages := []models.AIMessage{
+		{Role: "system", Content: prompt},
+		{Role: "user", Content: startMessage},
+	}
+
+	h.mon.RecordAICall()
+	return h.aiSvc.Complete(ctx, messages)
 }
 
 func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text string) {
@@ -155,19 +200,15 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		return
 	}
 
-	// РџСЂРѕРІРµСЂРєР° Р»РёРјРёС‚Р°
 	ok, err := h.userSvc.CheckLimit(ctx, u)
 	if err != nil {
 		slog.Error("check limit", "err", err)
 	}
 	if !ok {
-		h.base.send(ctx, u.VKID,
-			"вљ пёЏ Р’С‹ РґРѕСЃС‚РёРіР»Рё Р»РёРјРёС‚Р° Р·Р°РїСЂРѕСЃРѕРІ. РџРѕРїРѕР»РЅРёС‚Рµ Р±Р°Р»Р°РЅСЃ РёР»Рё РґРѕР¶РґРёС‚РµСЃСЊ СЃР±СЂРѕСЃР° Р»РёРјРёС‚Р°.",
-			keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Вы достигли лимита запросов. Пополните баланс или дождитесь сброса лимита.", keyboards.MainMenu())
 		return
 	}
 
-	// РџРѕР»СѓС‡Р°РµРј РґРёР°Р»РѕРі
 	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogMain)
 	if err != nil {
 		slog.Error("get dialog", "err", err)
@@ -175,8 +216,7 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		return
 	}
 
-	// РЎРѕС…СЂР°РЅСЏРµРј СЃРѕРѕР±С‰РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-	h.dialogRepo.SaveMessage(ctx, &models.Message{
+	_, _ = h.dialogRepo.SaveMessage(ctx, &models.Message{
 		DialogID: dialog.ID,
 		UserID:   u.ID,
 		Role:     models.MessageRoleUser,
@@ -184,13 +224,16 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		Content:  text,
 	})
 
-	// РџРѕР»СѓС‡Р°РµРј РёСЃС‚РѕСЂРёСЋ РґР»СЏ AI (РїРѕСЃР»РµРґРЅРёРµ 20 СЃРѕРѕР±С‰РµРЅРёР№)
 	history, err := h.dialogRepo.GetHistory(ctx, dialog.ID, 20)
 	if err != nil {
 		slog.Error("get history", "err", err)
 	}
 
-	aiMessages := make([]models.AIMessage, 0, len(history))
+	aiMessages := make([]models.AIMessage, 0, len(history)+1)
+	prompt := h.loadPromptForState(ctx, u.State)
+	if strings.TrimSpace(prompt) != "" {
+		aiMessages = append(aiMessages, models.AIMessage{Role: "system", Content: prompt})
+	}
 	for _, m := range history {
 		role := "user"
 		if m.Role == models.MessageRoleAssistant {
@@ -198,22 +241,17 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		}
 		aiMessages = append(aiMessages, models.AIMessage{Role: role, Content: m.Content})
 	}
-	if sp, _ := h.settingsRepo.Get(ctx, models.SettingSystemPrompt); strings.TrimSpace(sp) != "" {
-		aiMessages = append([]models.AIMessage{{Role: "system", Content: sp}}, aiMessages...)
-	}
 
-	// Р—Р°РїСЂРѕСЃ Рє AI
 	h.mon.RecordAICall()
 	reply, err := h.aiSvc.Complete(ctx, aiMessages)
 	if err != nil {
 		slog.Error("ai complete", "err", err)
 		h.mon.RecordError()
-		h.base.send(ctx, u.VKID, "вљ пёЏ РћС€РёР±РєР° AI. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Ошибка AI. Попробуйте позже.", keyboards.MainMenu())
 		return
 	}
 
-	// РЎРѕС…СЂР°РЅСЏРµРј РѕС‚РІРµС‚ AI
-	h.dialogRepo.SaveMessage(ctx, &models.Message{
+	_, _ = h.dialogRepo.SaveMessage(ctx, &models.Message{
 		DialogID: dialog.ID,
 		UserID:   u.ID,
 		Role:     models.MessageRoleAssistant,
@@ -221,64 +259,56 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		Content:  reply,
 	})
 
-	h.userSvc.IncrRequestCount(ctx, u.VKID)
+	_ = h.userSvc.IncrRequestCount(ctx, u.VKID)
 	h.base.send(ctx, u.VKID, reply, keyboards.MainMenu())
 }
 
 func (h *UserHandler) handleSupportDialog(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
 	if cmd == "back" {
-		h.userSvc.UpdateState(ctx, u.VKID, models.StateMainChat)
-		h.base.send(ctx, u.VKID, "в†©пёЏ Р’С‹ РІРµСЂРЅСѓР»РёСЃСЊ РІ РѕСЃРЅРѕРІРЅРѕР№ РґРёР°Р»РѕРі.", keyboards.MainMenu())
+		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
+		h.base.send(ctx, u.VKID, "Вы вернулись в меню.", keyboards.MainMenu())
 		return
 	}
 
-	// РЎРѕС…СЂР°РЅСЏРµРј РІ РѕС‚РґРµР»СЊРЅС‹Р№ РґРёР°Р»РѕРі РїРѕРґРґРµСЂР¶РєРё
 	dialog, _ := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogSupport)
-	h.dialogRepo.SaveMessage(ctx, &models.Message{
+	_, _ = h.dialogRepo.SaveMessage(ctx, &models.Message{
 		DialogID: dialog.ID,
 		UserID:   u.ID,
 		Role:     models.MessageRoleUser,
 		Type:     models.MessageTypeText,
 		Content:  text,
 	})
-	h.base.send(ctx, u.VKID,
-		"вњ… РЎРѕРѕР±С‰РµРЅРёРµ РѕС‚РїСЂР°РІР»РµРЅРѕ РІ РїРѕРґРґРµСЂР¶РєСѓ. РњС‹ РѕС‚РІРµС‚РёРј РІ Р±Р»РёР¶Р°Р№С€РµРµ РІСЂРµРјСЏ.",
-		keyboards.BackOnly())
+	h.base.send(ctx, u.VKID, "Сообщение отправлено в поддержку. Мы ответим позже.", keyboards.BackOnly())
 }
 
 func (h *UserHandler) handlePaymentMenu(ctx context.Context, u *models.User) {
-	info := fmt.Sprintf("рџ’і Р’Р°С€ Р±Р°Р»Р°РЅСЃ: %.2f в‚Ѕ\n\nР’С‹Р±РµСЂРёС‚Рµ СЃРїРѕСЃРѕР± РїРѕРїРѕР»РЅРµРЅРёСЏ:", u.Balance)
+	info := fmt.Sprintf("Ваш баланс: %.2f RUB\n\nВыберите способ пополнения:", u.Balance)
 	h.base.send(ctx, u.VKID, info, keyboards.PaymentMethods())
 }
 
 func (h *UserHandler) initiatePayment(ctx context.Context, u *models.User) {
-	// РњРёРЅРёРјР°Р»СЊРЅРѕРµ РїРѕРїРѕР»РЅРµРЅРёРµ 100 СЂСѓР±
-	p, err := h.paymentSvc.CreatePayment(ctx, u.ID, 100, "РџРѕРїРѕР»РЅРµРЅРёРµ Р±Р°Р»Р°РЅСЃР°")
+	p, err := h.paymentSvc.CreatePayment(ctx, u.ID, 100, "Пополнение баланса")
 	if err != nil {
-		h.base.send(ctx, u.VKID, "вќЊ РћС€РёР±РєР° РїСЂРё СЃРѕР·РґР°РЅРёРё РїР»Р°С‚РµР¶Р°.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Ошибка при создании платежа.", keyboards.MainMenu())
 		return
 	}
-	h.base.send(ctx, u.VKID,
-		fmt.Sprintf("рџ’і РЎСЃС‹Р»РєР° РґР»СЏ РѕРїР»Р°С‚С‹:\n%s\n\nРџРѕСЃР»Рµ РѕРїР»Р°С‚С‹ Р±Р°Р»Р°РЅСЃ РїРѕРїРѕР»РЅРёС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё.", p.ConfirmationURL),
-		keyboards.MainMenu())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Ссылка для оплаты:\n%s", p.ConfirmationURL), keyboards.MainMenu())
 }
 
 func (h *UserHandler) handleWalletPayment(ctx context.Context, u *models.User) {
-	h.base.send(ctx, u.VKID,
-		fmt.Sprintf("рџ’ј Р‘Р°Р»Р°РЅСЃ РєРѕС€РµР»СЊРєР°: %.2f в‚Ѕ\n\nР¤СѓРЅРєС†РёСЏ РѕРїР»Р°С‚С‹ СЃ РєРѕС€РµР»СЊРєР° РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ.", u.Balance),
-		keyboards.MainMenu())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Баланс кошелька: %.2f RUB\n\nФункция в разработке.", u.Balance), keyboards.MainMenu())
 }
 
 func (h *UserHandler) handleServices(ctx context.Context, u *models.User) {
 	products, err := h.paymentSvc.ListProducts(ctx)
 	if err != nil || len(products) == 0 {
-		h.base.send(ctx, u.VKID, "рџ›Ќ РљР°С‚Р°Р»РѕРі СѓСЃР»СѓРі РїРѕРєР° РїСѓСЃС‚.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Каталог услуг пока пуст.", keyboards.MainMenu())
 		return
 	}
 	var sb strings.Builder
-	sb.WriteString("рџ›Ќ РЈСЃР»СѓРіРё Рё С†РµРЅС‹:\n\n")
+	sb.WriteString("Услуги и цены:\n\n")
 	for _, p := range products {
-		sb.WriteString(fmt.Sprintf("вЂў %s вЂ” %.0f в‚Ѕ\n  %s\n\n", p.Name, p.Price, p.Description))
+		sb.WriteString(fmt.Sprintf("- %s — %.0f RUB\n  %s\n\n", p.Name, p.Price, p.Description))
 	}
 	h.base.send(ctx, u.VKID, sb.String(), keyboards.MainMenu())
 }
@@ -286,17 +316,8 @@ func (h *UserHandler) handleServices(ctx context.Context, u *models.User) {
 func (h *UserHandler) handleProfile(ctx context.Context, u *models.User) {
 	payments, _ := h.paymentSvc.ListByUser(ctx, u.ID)
 	text := fmt.Sprintf(
-		"рџ‘¤ РџСЂРѕС„РёР»СЊ\n\n"+
-			"РРјСЏ: %s %s\n"+
-			"Р‘Р°Р»Р°РЅСЃ: %.2f в‚Ѕ\n"+
-			"Р—Р°РїСЂРѕСЃРѕРІ: %d (Р»РёРјРёС‚: %d)\n"+
-			"Р РµРіРёСЃС‚СЂР°С†РёСЏ: %s\n"+
-			"РџР»Р°С‚РµР¶РµР№: %d",
-		u.FirstName, u.LastName,
-		u.Balance,
-		u.RequestCount, u.RequestLimit,
-		u.CreatedAt.Format("02.01.2006"),
-		len(payments),
+		"Профиль\n\nИмя: %s %s\nБаланс: %.2f RUB\nЗапросов: %d (лимит: %d)\nРегистрация: %s\nПлатежей: %d",
+		u.FirstName, u.LastName, u.Balance, u.RequestCount, u.RequestLimit, u.CreatedAt.Format("02.01.2006"), len(payments),
 	)
 	h.base.send(ctx, u.VKID, text, keyboards.MainMenu())
 }
@@ -337,7 +358,7 @@ func (h *UserHandler) renderFAQ(ctx context.Context) string {
 			}
 			if len(out) > 0 {
 				var sb strings.Builder
-				sb.WriteString("❓ FAQ:\n\n")
+				sb.WriteString("FAQ:\n\n")
 				for i, q := range out {
 					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, q))
 				}
@@ -350,5 +371,33 @@ func (h *UserHandler) renderFAQ(ctx context.Context) string {
 	if strings.TrimSpace(faq) != "" {
 		return faq
 	}
-	return "❓ Раздел FAQ пока не заполнен."
+	return "Раздел FAQ пока не заполнен."
+}
+
+func (h *UserHandler) loadPromptForState(ctx context.Context, state models.BotState) string {
+	switch state {
+	case models.StateMapChat:
+		if prompt := h.loadPromptValue(ctx, models.SettingMapPrompt, "system_prompt_map.txt"); prompt != "" {
+			return prompt
+		}
+	case models.StateMainChat:
+		if prompt := h.loadPromptValue(ctx, models.SettingGamePrompt, "system_prompt_game.txt"); prompt != "" {
+			return prompt
+		}
+	}
+
+	if prompt := h.loadPromptValue(ctx, models.SettingSystemPrompt, "system_prompt.txt"); prompt != "" {
+		return prompt
+	}
+	return ""
+}
+
+func (h *UserHandler) loadPromptValue(ctx context.Context, settingKey, fileName string) string {
+	if raw, _ := h.settingsRepo.Get(ctx, settingKey); strings.TrimSpace(raw) != "" {
+		return strings.TrimSpace(raw)
+	}
+	if data, err := os.ReadFile(fileName); err == nil && strings.TrimSpace(string(data)) != "" {
+		return strings.TrimSpace(string(data))
+	}
+	return ""
 }

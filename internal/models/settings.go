@@ -14,6 +14,8 @@ const (
 	SettingWelcomeMessage      = "welcome_message"
 	SettingConsentText         = "consent_text"
 	SettingSystemPrompt        = "system_prompt"
+	SettingGamePrompt          = "system_prompt_game"
+	SettingMapPrompt           = "system_prompt_map"
 	SettingFAQItems            = "faq_items_json"
 	SettingQuestionnaireItems  = "questionnaire_items_json"
 	SettingDefaultCooldownSecs = "default_cooldown_secs"
