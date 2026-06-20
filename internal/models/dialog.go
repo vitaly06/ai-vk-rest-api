@@ -16,6 +16,7 @@ type DialogType string
 
 const (
 	DialogMain    DialogType = "main"
+	DialogMap     DialogType = "map"
 	DialogSupport DialogType = "support"
 )
 

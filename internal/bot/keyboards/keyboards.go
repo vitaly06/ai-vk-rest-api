@@ -38,7 +38,7 @@ func MainMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Игра", "positive", `{"cmd":"game_chat"}`),
+				btn("Зеркало", "positive", `{"cmd":"game_chat"}`),
 				btn("Карта", "primary", `{"cmd":"map_chat"}`),
 			},
 			{
@@ -96,7 +96,10 @@ func AdminMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("AI Диалог", "positive", `{"cmd":"main_chat"}`),
+				btn("Зеркало", "positive", `{"cmd":"main_chat"}`),
+				btn("Карта", "positive", `{"cmd":"map_chat"}`),
+			},
+			{
 				btn("Поддержка", "secondary", `{"cmd":"support"}`),
 			},
 			{

@@ -184,7 +184,10 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.handleAccessDecision(ctx, u, msg, false)
 	case "main_chat":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateMainChat)
-		h.base.send(ctx, u.VKID, "💬 Режим диалога с AI. Пишите вопрос.", keyboards.AdminChatMenu())
+		h.base.send(ctx, u.VKID, "Зеркало включено. Пишите сообщение.", keyboards.AdminChatMenu())
+	case "map_chat":
+		h.userSvc.UpdateState(ctx, u.VKID, models.StateMapChat)
+		h.base.send(ctx, u.VKID, "Карта включена. Пишите сообщение.", keyboards.AdminChatMenu())
 	case "support":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateSupport)
 		h.base.send(ctx, u.VKID, "🛠 Чат поддержки.", keyboards.BackOnly())
@@ -193,7 +196,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
 	default:
 		// Если админ в режиме диалога — отправляем в AI
-		if u.State == models.StateMainChat || u.State == models.StateSupport {
+		if u.State == models.StateMainChat || u.State == models.StateMapChat || u.State == models.StateSupport {
 			h.handleAIChat(ctx, u, msg, cmd, text)
 		} else {
 			h.handleTextCommand(ctx, u, text)
@@ -998,7 +1001,7 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 		return
 	}
 
-	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogMain)
+	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, h.adminDialogTypeForState(u.State))
 	if err != nil {
 		slog.Error("admin get dialog", "err", err)
 		return
@@ -1018,7 +1021,7 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 		}
 		aiMessages = append(aiMessages, models.AIMessage{Role: role, Content: m.Content})
 	}
-	if sp, _ := h.settingsRepo.Get(ctx, models.SettingSystemPrompt); strings.TrimSpace(sp) != "" {
+	if sp := h.loadAdminPromptForState(ctx, u.State); strings.TrimSpace(sp) != "" {
 		aiMessages = append([]models.AIMessage{{Role: "system", Content: sp}}, aiMessages...)
 	}
 
@@ -1037,4 +1040,41 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 	})
 
 	h.base.send(ctx, u.VKID, reply, keyboards.AdminChatMenu())
+}
+
+func (h *AdminHandler) loadAdminPromptForState(ctx context.Context, state models.BotState) string {
+	switch state {
+	case models.StateMapChat:
+		if prompt := h.loadAdminPromptValue(ctx, models.SettingMapPrompt, "system_prompt_map.txt"); prompt != "" {
+			return prompt
+		}
+	case models.StateMainChat:
+		if prompt := h.loadAdminPromptValue(ctx, models.SettingGamePrompt, "system_prompt_game.txt"); prompt != "" {
+			return prompt
+		}
+	}
+
+	if prompt := h.loadAdminPromptValue(ctx, models.SettingSystemPrompt, "system_prompt.txt"); prompt != "" {
+		return prompt
+	}
+	return ""
+}
+
+func (h *AdminHandler) loadAdminPromptValue(ctx context.Context, settingKey, fileName string) string {
+	if raw, _ := h.settingsRepo.Get(ctx, settingKey); strings.TrimSpace(raw) != "" {
+		return strings.TrimSpace(raw)
+	}
+	if data, err := os.ReadFile(fileName); err == nil && strings.TrimSpace(string(data)) != "" {
+		return strings.TrimSpace(string(data))
+	}
+	return ""
+}
+
+func (h *AdminHandler) adminDialogTypeForState(state models.BotState) models.DialogType {
+	switch state {
+	case models.StateMapChat:
+		return models.DialogMap
+	default:
+		return models.DialogMain
+	}
 }

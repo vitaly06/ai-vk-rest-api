@@ -83,7 +83,7 @@ func (h *UserHandler) startQuestionnaire(ctx context.Context, u *models.User) {
 	questions := h.loadQuestionnaireItems(ctx)
 	if len(questions) == 0 {
 		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
-		h.base.send(ctx, u.VKID, "Выберите режим: Игра или Карта.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Выберите режим: Зеркало или Карта.", keyboards.MainMenu())
 		return
 	}
 	_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateQuestionnaire)
@@ -94,7 +94,7 @@ func (h *UserHandler) handleQuestionnaire(ctx context.Context, u *models.User, t
 	questions := h.loadQuestionnaireItems(ctx)
 	if len(questions) == 0 {
 		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
-		h.base.send(ctx, u.VKID, "Выберите режим: Игра или Карта.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Выберите режим: Зеркало или Карта.", keyboards.MainMenu())
 		return
 	}
 
@@ -141,19 +141,28 @@ func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg o
 			h.handleAIChat(ctx, u, text)
 			return
 		}
-		h.base.send(ctx, u.VKID, "Выберите режим: Игра или Карта.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Выберите режим: Зеркало или Карта.", keyboards.MainMenu())
 	}
 }
 
 func (h *UserHandler) enterScenarioMode(ctx context.Context, u *models.User, state models.BotState) {
-	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogMain)
+	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, h.dialogTypeForState(state))
 	if err != nil {
 		slog.Error("get dialog for mode", "err", err)
 		h.base.send(ctx, u.VKID, "Не удалось открыть режим. Попробуйте позже.", keyboards.MainMenu())
 		return
 	}
-	_ = h.dialogRepo.ClearHistory(ctx, dialog.ID)
 	_ = h.userSvc.UpdateState(ctx, u.VKID, state)
+
+	history, err := h.dialogRepo.GetHistory(ctx, dialog.ID, 1)
+	if err == nil && len(history) > 0 {
+		if state == models.StateMapChat {
+			h.base.send(ctx, u.VKID, "Карта открыта. Продолжаем эту ветку.", keyboards.MainMenu())
+			return
+		}
+		h.base.send(ctx, u.VKID, "Зеркало открыто. Продолжаем эту ветку.", keyboards.MainMenu())
+		return
+	}
 
 	reply, err := h.generateModeIntro(ctx, state)
 	if err != nil {
@@ -209,7 +218,7 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		return
 	}
 
-	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogMain)
+	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, h.dialogTypeForState(u.State))
 	if err != nil {
 		slog.Error("get dialog", "err", err)
 		h.mon.RecordError()
@@ -400,4 +409,13 @@ func (h *UserHandler) loadPromptValue(ctx context.Context, settingKey, fileName 
 		return strings.TrimSpace(string(data))
 	}
 	return ""
+}
+
+func (h *UserHandler) dialogTypeForState(state models.BotState) models.DialogType {
+	switch state {
+	case models.StateMapChat:
+		return models.DialogMap
+	default:
+		return models.DialogMain
+	}
 }
