@@ -38,23 +38,23 @@ func MainMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Зеркало", "positive", `{"cmd":"game_chat"}`),
-				btn("Карта", "primary", `{"cmd":"map_chat"}`),
+				btn("Р—РµСЂРєР°Р»Рѕ", "positive", `{"cmd":"game_chat"}`),
+				btn("РљР°СЂС‚Р°", "primary", `{"cmd":"map_chat"}`),
 			},
 			{
-				btn("Поддержка", "secondary", `{"cmd":"support"}`),
-				btn("Пополнить", "primary", `{"cmd":"payment"}`),
+				btn("РџРѕРґРґРµСЂР¶РєР°", "secondary", `{"cmd":"support"}`),
+				btn("РџРѕРїРѕР»РЅРёС‚СЊ", "primary", `{"cmd":"payment"}`),
 			},
 			{
-				btn("Услуги", "primary", `{"cmd":"services"}`),
-				btn("Мой профиль", "secondary", `{"cmd":"profile"}`),
+				btn("РЈСЃР»СѓРіРё", "primary", `{"cmd":"services"}`),
+				btn("РњРѕР№ РїСЂРѕС„РёР»СЊ", "secondary", `{"cmd":"profile"}`),
 			},
 			{
 				btn("FAQ", "secondary", `{"cmd":"faq"}`),
 			},
 			{
-				btn("Очистить Зеркало", "negative", `{"cmd":"user_clear_mirror"}`),
-				btn("Очистить Карту", "negative", `{"cmd":"user_clear_map"}`),
+				btn("РћС‡РёСЃС‚РёС‚СЊ Р—РµСЂРєР°Р»Рѕ", "negative", `{"cmd":"user_clear_mirror"}`),
+				btn("РћС‡РёСЃС‚РёС‚СЊ РљР°СЂС‚Сѓ", "negative", `{"cmd":"user_clear_map"}`),
 			},
 		},
 	}
@@ -65,8 +65,8 @@ func ConsentKeyboard() *Keyboard {
 		OneTime: true,
 		Buttons: [][]Button{
 			{
-				btn("Принять", "positive", `{"cmd":"consent_accept"}`),
-				btn("Отказаться", "negative", `{"cmd":"consent_decline"}`),
+				btn("РџСЂРёРЅСЏС‚СЊ", "positive", `{"cmd":"consent_accept"}`),
+				btn("РћС‚РєР°Р·Р°С‚СЊСЃСЏ", "negative", `{"cmd":"consent_decline"}`),
 			},
 		},
 	}
@@ -77,8 +77,8 @@ func MailingConsentKeyboard() *Keyboard {
 		OneTime: true,
 		Buttons: [][]Button{
 			{
-				btn("Да, хочу", "positive", `{"cmd":"mailing_yes"}`),
-				btn("Нет", "secondary", `{"cmd":"mailing_no"}`),
+				btn("Р”Р°, С…РѕС‡Сѓ", "positive", `{"cmd":"mailing_yes"}`),
+				btn("РќРµС‚", "secondary", `{"cmd":"mailing_no"}`),
 			},
 		},
 	}
@@ -88,9 +88,9 @@ func PaymentMethods() *Keyboard {
 	return &Keyboard{
 		OneTime: true,
 		Buttons: [][]Button{
-			{btn("Карта / СБП", "primary", `{"cmd":"pay_card"}`)},
-			{btn("Внутренний кошелек", "secondary", `{"cmd":"pay_wallet"}`)},
-			{btn("Назад", "secondary", `{"cmd":"back"}`)},
+			{btn("РљР°СЂС‚Р° / РЎР‘Рџ", "primary", `{"cmd":"pay_card"}`)},
+			{btn("Р’РЅСѓС‚СЂРµРЅРЅРёР№ РєРѕС€РµР»РµРє", "secondary", `{"cmd":"pay_wallet"}`)},
+			{btn("РќР°Р·Р°Рґ", "secondary", `{"cmd":"back"}`)},
 		},
 	}
 }
@@ -100,23 +100,23 @@ func AdminMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Зеркало", "positive", `{"cmd":"main_chat"}`),
-				btn("Карта", "positive", `{"cmd":"map_chat"}`),
+				btn("Р—РµСЂРєР°Р»Рѕ", "positive", `{"cmd":"main_chat"}`),
+				btn("РљР°СЂС‚Р°", "positive", `{"cmd":"map_chat"}`),
 			},
 			{
-				btn("Поддержка", "secondary", `{"cmd":"support"}`),
+				btn("РџРѕРґРґРµСЂР¶РєР°", "secondary", `{"cmd":"support"}`),
 			},
 			{
-				btn("Пользователи", "primary", `{"cmd":"admin_users"}`),
-				btn("Ссылки", "primary", `{"cmd":"admin_invites"}`),
+				btn("РџРѕР»СЊР·РѕРІР°С‚РµР»Рё", "primary", `{"cmd":"admin_users"}`),
+				btn("РЎСЃС‹Р»РєРё", "primary", `{"cmd":"admin_invites"}`),
 			},
 			{
-				btn("Настройки", "secondary", `{"cmd":"admin_settings"}`),
-				btn("Мониторинг", "secondary", `{"cmd":"admin_metrics"}`),
+				btn("РќР°СЃС‚СЂРѕР№РєРё", "secondary", `{"cmd":"admin_settings"}`),
+				btn("РњРѕРЅРёС‚РѕСЂРёРЅРі", "secondary", `{"cmd":"admin_metrics"}`),
 			},
 			{
-				btn("Модераторы", "secondary", `{"cmd":"admin_mods"}`),
-				btn("Аудит", "secondary", `{"cmd":"admin_audit"}`),
+				btn("РњРѕРґРµСЂР°С‚РѕСЂС‹", "secondary", `{"cmd":"admin_mods"}`),
+				btn("РђСѓРґРёС‚", "secondary", `{"cmd":"admin_audit"}`),
 			},
 		},
 	}
@@ -170,11 +170,11 @@ func ModeratorMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Поддержка", "primary", `{"cmd":"mod_support"}`),
-				btn("Создать ссылку", "secondary", `{"cmd":"mod_invite"}`),
+				btn("РџРѕРґРґРµСЂР¶РєР°", "primary", `{"cmd":"mod_support"}`),
+				btn("РЎРѕР·РґР°С‚СЊ СЃСЃС‹Р»РєСѓ", "secondary", `{"cmd":"mod_invite"}`),
 			},
 			{
-				btn("Проверить пользователя", "secondary", `{"cmd":"mod_check_user"}`),
+				btn("РџСЂРѕРІРµСЂРёС‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ", "secondary", `{"cmd":"mod_check_user"}`),
 			},
 		},
 	}
@@ -185,8 +185,8 @@ func YesNo(yesPayload, noPayload string) *Keyboard {
 		OneTime: true,
 		Buttons: [][]Button{
 			{
-				btn("Да", "positive", yesPayload),
-				btn("Нет", "negative", noPayload),
+				btn("Р”Р°", "positive", yesPayload),
+				btn("РќРµС‚", "negative", noPayload),
 			},
 		},
 	}
@@ -196,7 +196,7 @@ func BackOnly() *Keyboard {
 	return &Keyboard{
 		OneTime: true,
 		Buttons: [][]Button{
-			{btn("Назад", "secondary", `{"cmd":"back"}`)},
+			{btn("РќР°Р·Р°Рґ", "secondary", `{"cmd":"back"}`)},
 		},
 	}
 }
@@ -215,8 +215,8 @@ func AccessRequestActions(requestID int64, vkID int64, name string) *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Одобрить "+displayName, "positive", approvePayload),
-				btn("Отклонить "+displayName, "negative", rejectPayload),
+				btn("РћРґРѕР±СЂРёС‚СЊ "+displayName, "positive", approvePayload),
+				btn("РћС‚РєР»РѕРЅРёС‚СЊ "+displayName, "negative", rejectPayload),
 			},
 		},
 	}
@@ -226,7 +226,7 @@ func RequestAccess() *Keyboard {
 	return &Keyboard{
 		OneTime: true,
 		Buttons: [][]Button{
-			{btn("Подать заявку", "primary", `{"cmd":"request_access"}`)},
+			{btn("РџРѕРґР°С‚СЊ Р·Р°СЏРІРєСѓ", "primary", `{"cmd":"request_access"}`)},
 		},
 	}
 }
@@ -249,10 +249,10 @@ func UserListInline(users []UserButton, offset int, total int) *Keyboard {
 
 	nav := []Button{}
 	if offset > 0 {
-		nav = append(nav, btn("Назад", "secondary", fmt.Sprintf(`{"cmd":"admin_users_page","offset":%d}`, offset-8)))
+		nav = append(nav, btn("РќР°Р·Р°Рґ", "secondary", fmt.Sprintf(`{"cmd":"admin_users_page","offset":%d}`, offset-8)))
 	}
 	if offset+len(users) < total {
-		nav = append(nav, btn("Далее", "secondary", fmt.Sprintf(`{"cmd":"admin_users_page","offset":%d}`, offset+8)))
+		nav = append(nav, btn("Р”Р°Р»РµРµ", "secondary", fmt.Sprintf(`{"cmd":"admin_users_page","offset":%d}`, offset+8)))
 	}
 	if len(nav) > 0 {
 		kb.Buttons = append(kb.Buttons, nav)
@@ -271,16 +271,16 @@ func UserActionsInline(vkID int64) *Keyboard {
 		Inline: true,
 		Buttons: [][]Button{
 			{
-				btn("Бан", "negative", fmt.Sprintf(`{"cmd":"admin_ban","vk_id":%d}`, vkID)),
-				btn("Охладить 1ч", "secondary", fmt.Sprintf(`{"cmd":"admin_cool","vk_id":%d,"mins":60}`, vkID)),
+				btn("Р‘Р°РЅ", "negative", fmt.Sprintf(`{"cmd":"admin_ban","vk_id":%d}`, vkID)),
+				btn("РћС…Р»Р°РґРёС‚СЊ 1С‡", "secondary", fmt.Sprintf(`{"cmd":"admin_cool","vk_id":%d,"mins":60}`, vkID)),
 			},
 			{
-				btn("Разбанить", "positive", fmt.Sprintf(`{"cmd":"admin_unban","vk_id":%d}`, vkID)),
-				btn("Модератор", "primary", fmt.Sprintf(`{"cmd":"admin_set_mod","vk_id":%d}`, vkID)),
+				btn("Р Р°Р·Р±Р°РЅРёС‚СЊ", "positive", fmt.Sprintf(`{"cmd":"admin_unban","vk_id":%d}`, vkID)),
+				btn("РњРѕРґРµСЂР°С‚РѕСЂ", "primary", fmt.Sprintf(`{"cmd":"admin_set_mod","vk_id":%d}`, vkID)),
 			},
 			{
-				btn("Снять роль", "secondary", fmt.Sprintf(`{"cmd":"admin_set_user","vk_id":%d}`, vkID)),
-				btn("Лимит запросов", "secondary", fmt.Sprintf(`{"cmd":"admin_set_limit","vk_id":%d}`, vkID)),
+				btn("РЎРЅСЏС‚СЊ СЂРѕР»СЊ", "secondary", fmt.Sprintf(`{"cmd":"admin_set_user","vk_id":%d}`, vkID)),
+				btn("Р›РёРјРёС‚ Р·Р°РїСЂРѕСЃРѕРІ", "secondary", fmt.Sprintf(`{"cmd":"admin_set_limit","vk_id":%d}`, vkID)),
 			},
 		},
 	}
