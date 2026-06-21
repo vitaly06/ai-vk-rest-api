@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -70,6 +71,14 @@ func (s *Service) Complete(ctx context.Context, history []models.AIMessage) (str
 	if err != nil {
 		return "", fmt.Errorf("ai: marshal request: %w", err)
 	}
+	if s.cfg.DebugPayload {
+		slog.Info("ai request payload",
+			"provider", s.cfg.Provider,
+			"model", model,
+			"messages_count", len(messages),
+			"payload", string(body),
+		)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		s.cfg.BaseURL+"/chat/completions", bytes.NewReader(body))
@@ -91,6 +100,14 @@ func (s *Service) Complete(ctx context.Context, history []models.AIMessage) (str
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("ai: read response: %w", err)
+	}
+	if s.cfg.DebugPayload {
+		slog.Info("ai response payload",
+			"provider", s.cfg.Provider,
+			"model", model,
+			"status", resp.StatusCode,
+			"body", string(raw),
+		)
 	}
 
 	// Some providers (e.g. Gemini OpenAI-compat layer) wrap error responses in

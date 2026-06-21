@@ -47,6 +47,7 @@ type AIConfig struct {
 	ProjectID    string
 	Model        string
 	MaxTokens    int
+	DebugPayload bool
 	SystemPrompt string
 }
 
@@ -115,6 +116,7 @@ func Load() *Config {
 			ProjectID:    aiProjectID,
 			Model:        aiModel,
 			MaxTokens:    getEnvInt("AI_MAX_TOKENS", 2048),
+			DebugPayload: getEnvBool("AI_DEBUG_PAYLOAD", false),
 			SystemPrompt: loadSystemPrompt(),
 		},
 		Payment: PaymentConfig{
@@ -171,6 +173,18 @@ func getEnvInt(key string, def int) int {
 		n, err := strconv.Atoi(v)
 		if err == nil {
 			return n
+		}
+	}
+	return def
+}
+
+func getEnvBool(key string, def bool) bool {
+	if v := strings.TrimSpace(strings.ToLower(os.Getenv(key))); v != "" {
+		switch v {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
 		}
 	}
 	return def
