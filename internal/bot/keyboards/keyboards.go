@@ -52,6 +52,10 @@ func MainMenu() *Keyboard {
 			{
 				btn("FAQ", "secondary", `{"cmd":"faq"}`),
 			},
+			{
+				btn("Очистить Зеркало", "negative", `{"cmd":"user_clear_mirror"}`),
+				btn("Очистить Карту", "negative", `{"cmd":"user_clear_map"}`),
+			},
 		},
 	}
 }

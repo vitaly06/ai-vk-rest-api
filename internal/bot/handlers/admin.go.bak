@@ -274,13 +274,13 @@ func (h *AdminHandler) handleUserDetail(ctx context.Context, admin *models.User,
 	case models.StatusRestricted:
 		statusEmoji = "рџџЎ"
 	case models.StatusPending:
-		statusEmoji = "РІС™Р„"
+		statusEmoji = "вљЄ"
 	}
 	banInfo := "вЂ”"
 	if target.BannedUntil != nil {
 		banInfo = target.BannedUntil.Format("02.01.2006 15:04")
 	}
-	limitStr := "РІв‚¬С›"
+	limitStr := "в€ћ"
 	if target.RequestLimit > 0 {
 		limitStr = fmt.Sprintf("%d", target.RequestLimit)
 	}
@@ -1049,7 +1049,7 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 	if err != nil {
 		slog.Error("admin ai complete", "err", err)
 		h.mon.RecordError()
-		h.base.send(ctx, u.VKID, "⚠️ Ошибка AI: "+err.Error(), keyboards.AdminChatMenu())
+        h.base.send(ctx, u.VKID, "⚠️ Ошибка AI: "+err.Error(), keyboards.AdminChatMenu())
 		return
 	}
 
@@ -1057,7 +1057,7 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 	if err != nil {
 		slog.Error("admin repair ai reply", "err", err)
 		h.mon.RecordError()
-		h.base.send(ctx, u.VKID, "⚠️ Ошибка AI: "+err.Error(), keyboards.AdminChatMenu())
+        h.base.send(ctx, u.VKID, "⚠️ Ошибка AI: "+err.Error(), keyboards.AdminChatMenu())
 		return
 	}
 
@@ -1118,4 +1118,3 @@ func (h *AdminHandler) clearAdminDialogHistory(ctx context.Context, u *models.Us
 	}
 	h.base.send(ctx, u.VKID, fmt.Sprintf("РСЃС‚РѕСЂРёСЏ С‡Р°С‚Р° \"%s\" РѕС‡РёС‰РµРЅР°.", title), keyboards.AdminChatMenu())
 }
-
