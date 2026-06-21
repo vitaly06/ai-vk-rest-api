@@ -104,5 +104,15 @@ func runMigrations(db *sql.DB) error {
 		return fmt.Errorf("read migration: %w", err)
 	}
 	_, err = db.Exec(string(data))
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+ALTER TABLE dialogs DROP CONSTRAINT IF EXISTS dialogs_type_check;
+ALTER TABLE dialogs
+    ADD CONSTRAINT dialogs_type_check
+    CHECK (type IN ('main','map','support'));
+`)
 	return err
 }

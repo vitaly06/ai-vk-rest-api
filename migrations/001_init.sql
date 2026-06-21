@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS dialogs (
     id          BIGSERIAL PRIMARY KEY,
     user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type        TEXT NOT NULL DEFAULT 'main'
-                    CHECK (type IN ('main','support')),
+                    CHECK (type IN ('main','map','support')),
     is_active   BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
