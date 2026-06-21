@@ -1042,6 +1042,7 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 	if sp := h.loadAdminPromptForState(ctx, u.State); strings.TrimSpace(sp) != "" {
 		aiMessages = append([]models.AIMessage{{Role: "system", Content: sp}}, aiMessages...)
 	}
+	aiMessages = appendScenarioGuard(aiMessages)
 
 	h.mon.RecordAICall()
 	reply, err := h.aiSvc.Complete(ctx, aiMessages)
@@ -1049,6 +1050,14 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 		slog.Error("admin ai complete", "err", err)
 		h.mon.RecordError()
 		h.base.send(ctx, u.VKID, "⚠️ Ошибка AI: "+err.Error(), keyboards.AdminChatMenu())
+		return
+	}
+
+	reply, err = repairScenarioReply(ctx, h.aiSvc, aiMessages, text, reply)
+	if err != nil {
+		slog.Error("admin repair ai reply", "err", err)
+		h.mon.RecordError()
+		h.base.send(ctx, u.VKID, "вљ пёЏ РћС€РёР±РєР° AI: "+err.Error(), keyboards.AdminChatMenu())
 		return
 	}
 

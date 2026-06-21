@@ -19,9 +19,9 @@ import (
 )
 
 var questionnaire = []string{
-	"Как вас зовут?",
-	"Чем вы занимаетесь?",
-	"Как вы узнали о нас?",
+	"РљР°Рє РІР°СЃ Р·РѕРІСѓС‚?",
+	"Р§РµРј РІС‹ Р·Р°РЅРёРјР°РµС‚РµСЃСЊ?",
+	"РљР°Рє РІС‹ СѓР·РЅР°Р»Рё Рѕ РЅР°СЃ?",
 }
 
 type UserHandler struct {
@@ -52,12 +52,12 @@ func (h *UserHandler) Handle(ctx context.Context, u *models.User, msg object.Mes
 func (h *UserHandler) handleWelcome(ctx context.Context, u *models.User) {
 	welcome, _ := h.settingsRepo.Get(ctx, models.SettingWelcomeMessage)
 	if welcome == "" {
-		welcome = "Добро пожаловать! Я ваш AI-помощник."
+		welcome = "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ! РЇ РІР°С€ AI-РїРѕРјРѕС‰РЅРёРє."
 	}
 
 	consentText, _ := h.settingsRepo.Get(ctx, models.SettingConsentText)
 	if consentText == "" {
-		consentText = "Для продолжения необходимо согласие на обработку персональных данных и получение рассылок."
+		consentText = "Р”Р»СЏ РїСЂРѕРґРѕР»Р¶РµРЅРёСЏ РЅРµРѕР±С…РѕРґРёРјРѕ СЃРѕРіР»Р°СЃРёРµ РЅР° РѕР±СЂР°Р±РѕС‚РєСѓ РїРµСЂСЃРѕРЅР°Р»СЊРЅС‹С… РґР°РЅРЅС‹С… Рё РїРѕР»СѓС‡РµРЅРёРµ СЂР°СЃСЃС‹Р»РѕРє."
 	}
 
 	h.base.send(ctx, u.VKID, welcome+"\n\n"+consentText, keyboards.ConsentKeyboard())
@@ -68,14 +68,14 @@ func (h *UserHandler) handleConsent(ctx context.Context, u *models.User, cmd str
 	switch cmd {
 	case "consent_accept":
 		_ = h.userSvc.SaveConsent(ctx, u.VKID, true, false)
-		h.base.send(ctx, u.VKID, "Хотите получать полезные рассылки?", keyboards.MailingConsentKeyboard())
+		h.base.send(ctx, u.VKID, "РҐРѕС‚РёС‚Рµ РїРѕР»СѓС‡Р°С‚СЊ РїРѕР»РµР·РЅС‹Рµ СЂР°СЃСЃС‹Р»РєРё?", keyboards.MailingConsentKeyboard())
 	case "mailing_yes":
 		_ = h.userSvc.SaveConsent(ctx, u.VKID, true, true)
 		h.startQuestionnaire(ctx, u)
 	case "mailing_no":
 		h.startQuestionnaire(ctx, u)
 	case "consent_decline":
-		h.base.send(ctx, u.VKID, "Без согласия пользоваться ботом нельзя.", keyboards.Empty())
+		h.base.send(ctx, u.VKID, "Р‘РµР· СЃРѕРіР»Р°СЃРёСЏ РїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ Р±РѕС‚РѕРј РЅРµР»СЊР·СЏ.", keyboards.Empty())
 	}
 }
 
@@ -83,18 +83,18 @@ func (h *UserHandler) startQuestionnaire(ctx context.Context, u *models.User) {
 	questions := h.loadQuestionnaireItems(ctx)
 	if len(questions) == 0 {
 		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
-		h.base.send(ctx, u.VKID, "Выберите режим: Зеркало или Карта.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Р’С‹Р±РµСЂРёС‚Рµ СЂРµР¶РёРј: Р—РµСЂРєР°Р»Рѕ РёР»Рё РљР°СЂС‚Р°.", keyboards.MainMenu())
 		return
 	}
 	_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateQuestionnaire)
-	h.base.send(ctx, u.VKID, "Небольшая анкета. "+questions[0], keyboards.Empty())
+	h.base.send(ctx, u.VKID, "РќРµР±РѕР»СЊС€Р°СЏ Р°РЅРєРµС‚Р°. "+questions[0], keyboards.Empty())
 }
 
 func (h *UserHandler) handleQuestionnaire(ctx context.Context, u *models.User, text string) {
 	questions := h.loadQuestionnaireItems(ctx)
 	if len(questions) == 0 {
 		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
-		h.base.send(ctx, u.VKID, "Выберите режим: Зеркало или Карта.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Р’С‹Р±РµСЂРёС‚Рµ СЂРµР¶РёРј: Р—РµСЂРєР°Р»Рѕ РёР»Рё РљР°СЂС‚Р°.", keyboards.MainMenu())
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *UserHandler) handleQuestionnaire(ctx context.Context, u *models.User, t
 	}
 
 	_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
-	h.base.send(ctx, u.VKID, "Анкета заполнена. Теперь можно выбрать режим.", keyboards.MainMenu())
+	h.base.send(ctx, u.VKID, "РђРЅРєРµС‚Р° Р·Р°РїРѕР»РЅРµРЅР°. РўРµРїРµСЂСЊ РјРѕР¶РЅРѕ РІС‹Р±СЂР°С‚СЊ СЂРµР¶РёРј.", keyboards.MainMenu())
 }
 
 func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
@@ -123,7 +123,7 @@ func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg o
 		h.enterScenarioMode(ctx, u, models.StateMapChat)
 	case "support":
 		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateSupport)
-		h.base.send(ctx, u.VKID, "Чат технической поддержки. Опишите проблему.", keyboards.BackOnly())
+		h.base.send(ctx, u.VKID, "Р§Р°С‚ С‚РµС…РЅРёС‡РµСЃРєРѕР№ РїРѕРґРґРµСЂР¶РєРё. РћРїРёС€РёС‚Рµ РїСЂРѕР±Р»РµРјСѓ.", keyboards.BackOnly())
 	case "payment":
 		h.handlePaymentMenu(ctx, u)
 	case "services":
@@ -141,7 +141,7 @@ func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg o
 			h.handleAIChat(ctx, u, text)
 			return
 		}
-		h.base.send(ctx, u.VKID, "Выберите режим: Зеркало или Карта.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Р’С‹Р±РµСЂРёС‚Рµ СЂРµР¶РёРј: Р—РµСЂРєР°Р»Рѕ РёР»Рё РљР°СЂС‚Р°.", keyboards.MainMenu())
 	}
 }
 
@@ -149,7 +149,7 @@ func (h *UserHandler) enterScenarioMode(ctx context.Context, u *models.User, sta
 	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, h.dialogTypeForState(state))
 	if err != nil {
 		slog.Error("get dialog for mode", "err", err)
-		h.base.send(ctx, u.VKID, "Не удалось открыть режим. Попробуйте позже.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ СЂРµР¶РёРј. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.", keyboards.MainMenu())
 		return
 	}
 	_ = h.userSvc.UpdateState(ctx, u.VKID, state)
@@ -157,17 +157,17 @@ func (h *UserHandler) enterScenarioMode(ctx context.Context, u *models.User, sta
 	history, err := h.dialogRepo.GetHistory(ctx, dialog.ID, 1)
 	if err == nil && len(history) > 0 {
 		if state == models.StateMapChat {
-			h.base.send(ctx, u.VKID, "Карта открыта. Продолжаем эту ветку.", keyboards.MainMenu())
+			h.base.send(ctx, u.VKID, "РљР°СЂС‚Р° РѕС‚РєСЂС‹С‚Р°. РџСЂРѕРґРѕР»Р¶Р°РµРј СЌС‚Сѓ РІРµС‚РєСѓ.", keyboards.MainMenu())
 			return
 		}
-		h.base.send(ctx, u.VKID, "Зеркало открыто. Продолжаем эту ветку.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Р—РµСЂРєР°Р»Рѕ РѕС‚РєСЂС‹С‚Рѕ. РџСЂРѕРґРѕР»Р¶Р°РµРј СЌС‚Сѓ РІРµС‚РєСѓ.", keyboards.MainMenu())
 		return
 	}
 
 	reply, err := h.generateModeIntro(ctx, state)
 	if err != nil {
 		slog.Error("generate mode intro", "state", state, "err", err)
-		h.base.send(ctx, u.VKID, "Не удалось запустить режим. Проверьте промпт.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїСѓСЃС‚РёС‚СЊ СЂРµР¶РёРј. РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂРѕРјРїС‚.", keyboards.MainMenu())
 		return
 	}
 
@@ -187,21 +187,26 @@ func (h *UserHandler) generateModeIntro(ctx context.Context, state models.BotSta
 		return "", fmt.Errorf("empty prompt for state %s", state)
 	}
 
-	startMessage := "Начни диалог по правилам этого режима."
+	startMessage := "РќР°С‡РЅРё РґРёР°Р»РѕРі РїРѕ РїСЂР°РІРёР»Р°Рј СЌС‚РѕРіРѕ СЂРµР¶РёРјР°."
 	if state == models.StateMainChat {
-		startMessage = "Начни симуляцию по правилам режима. Сначала запроси необходимые данные и затем дай первый ход среды."
+		startMessage = "РќР°С‡РЅРё СЃРёРјСѓР»СЏС†РёСЋ РїРѕ РїСЂР°РІРёР»Р°Рј СЂРµР¶РёРјР°. РЎРЅР°С‡Р°Р»Р° Р·Р°РїСЂРѕСЃРё РЅРµРѕР±С…РѕРґРёРјС‹Рµ РґР°РЅРЅС‹Рµ Рё Р·Р°С‚РµРј РґР°Р№ РїРµСЂРІС‹Р№ С…РѕРґ СЃСЂРµРґС‹."
 	}
 	if state == models.StateMapChat {
-		startMessage = "Начни режим карты. Сначала запроси исходные данные, нужные для чтения карты, и веди диалог в рамках инструкции."
+		startMessage = "РќР°С‡РЅРё СЂРµР¶РёРј РєР°СЂС‚С‹. РЎРЅР°С‡Р°Р»Р° Р·Р°РїСЂРѕСЃРё РёСЃС…РѕРґРЅС‹Рµ РґР°РЅРЅС‹Рµ, РЅСѓР¶РЅС‹Рµ РґР»СЏ С‡С‚РµРЅРёСЏ РєР°СЂС‚С‹, Рё РІРµРґРё РґРёР°Р»РѕРі РІ СЂР°РјРєР°С… РёРЅСЃС‚СЂСѓРєС†РёРё."
 	}
 
 	messages := []models.AIMessage{
 		{Role: "system", Content: prompt},
 		{Role: "user", Content: startMessage},
 	}
+	messages = appendScenarioGuard(messages)
 
 	h.mon.RecordAICall()
-	return h.aiSvc.Complete(ctx, messages)
+	reply, err := h.aiSvc.Complete(ctx, messages)
+	if err != nil {
+		return "", err
+	}
+	return repairScenarioReply(ctx, h.aiSvc, messages, startMessage, reply)
 }
 
 func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text string) {
@@ -214,7 +219,7 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		slog.Error("check limit", "err", err)
 	}
 	if !ok {
-		h.base.send(ctx, u.VKID, "Вы достигли лимита запросов. Пополните баланс или дождитесь сброса лимита.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Р’С‹ РґРѕСЃС‚РёРіР»Рё Р»РёРјРёС‚Р° Р·Р°РїСЂРѕСЃРѕРІ. РџРѕРїРѕР»РЅРёС‚Рµ Р±Р°Р»Р°РЅСЃ РёР»Рё РґРѕР¶РґРёС‚РµСЃСЊ СЃР±СЂРѕСЃР° Р»РёРјРёС‚Р°.", keyboards.MainMenu())
 		return
 	}
 
@@ -250,13 +255,21 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 		}
 		aiMessages = append(aiMessages, models.AIMessage{Role: role, Content: m.Content})
 	}
+	aiMessages = appendScenarioGuard(aiMessages)
 
 	h.mon.RecordAICall()
 	reply, err := h.aiSvc.Complete(ctx, aiMessages)
 	if err != nil {
 		slog.Error("ai complete", "err", err)
 		h.mon.RecordError()
-		h.base.send(ctx, u.VKID, "Ошибка AI. Попробуйте позже.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "РћС€РёР±РєР° AI. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.", keyboards.MainMenu())
+		return
+	}
+	reply, err = repairScenarioReply(ctx, h.aiSvc, aiMessages, text, reply)
+	if err != nil {
+		slog.Error("repair ai reply", "err", err)
+		h.mon.RecordError()
+		h.base.send(ctx, u.VKID, "РћС€РёР±РєР° AI. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.", keyboards.MainMenu())
 		return
 	}
 
@@ -275,7 +288,7 @@ func (h *UserHandler) handleAIChat(ctx context.Context, u *models.User, text str
 func (h *UserHandler) handleSupportDialog(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
 	if cmd == "back" {
 		_ = h.userSvc.UpdateState(ctx, u.VKID, models.StateNone)
-		h.base.send(ctx, u.VKID, "Вы вернулись в меню.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "Р’С‹ РІРµСЂРЅСѓР»РёСЃСЊ РІ РјРµРЅСЋ.", keyboards.MainMenu())
 		return
 	}
 
@@ -287,37 +300,37 @@ func (h *UserHandler) handleSupportDialog(ctx context.Context, u *models.User, m
 		Type:     models.MessageTypeText,
 		Content:  text,
 	})
-	h.base.send(ctx, u.VKID, "Сообщение отправлено в поддержку. Мы ответим позже.", keyboards.BackOnly())
+	h.base.send(ctx, u.VKID, "РЎРѕРѕР±С‰РµРЅРёРµ РѕС‚РїСЂР°РІР»РµРЅРѕ РІ РїРѕРґРґРµСЂР¶РєСѓ. РњС‹ РѕС‚РІРµС‚РёРј РїРѕР·Р¶Рµ.", keyboards.BackOnly())
 }
 
 func (h *UserHandler) handlePaymentMenu(ctx context.Context, u *models.User) {
-	info := fmt.Sprintf("Ваш баланс: %.2f RUB\n\nВыберите способ пополнения:", u.Balance)
+	info := fmt.Sprintf("Р’Р°С€ Р±Р°Р»Р°РЅСЃ: %.2f RUB\n\nР’С‹Р±РµСЂРёС‚Рµ СЃРїРѕСЃРѕР± РїРѕРїРѕР»РЅРµРЅРёСЏ:", u.Balance)
 	h.base.send(ctx, u.VKID, info, keyboards.PaymentMethods())
 }
 
 func (h *UserHandler) initiatePayment(ctx context.Context, u *models.User) {
-	p, err := h.paymentSvc.CreatePayment(ctx, u.ID, 100, "Пополнение баланса")
+	p, err := h.paymentSvc.CreatePayment(ctx, u.ID, 100, "РџРѕРїРѕР»РЅРµРЅРёРµ Р±Р°Р»Р°РЅСЃР°")
 	if err != nil {
-		h.base.send(ctx, u.VKID, "Ошибка при создании платежа.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "РћС€РёР±РєР° РїСЂРё СЃРѕР·РґР°РЅРёРё РїР»Р°С‚РµР¶Р°.", keyboards.MainMenu())
 		return
 	}
-	h.base.send(ctx, u.VKID, fmt.Sprintf("Ссылка для оплаты:\n%s", p.ConfirmationURL), keyboards.MainMenu())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("РЎСЃС‹Р»РєР° РґР»СЏ РѕРїР»Р°С‚С‹:\n%s", p.ConfirmationURL), keyboards.MainMenu())
 }
 
 func (h *UserHandler) handleWalletPayment(ctx context.Context, u *models.User) {
-	h.base.send(ctx, u.VKID, fmt.Sprintf("Баланс кошелька: %.2f RUB\n\nФункция в разработке.", u.Balance), keyboards.MainMenu())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Р‘Р°Р»Р°РЅСЃ РєРѕС€РµР»СЊРєР°: %.2f RUB\n\nР¤СѓРЅРєС†РёСЏ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ.", u.Balance), keyboards.MainMenu())
 }
 
 func (h *UserHandler) handleServices(ctx context.Context, u *models.User) {
 	products, err := h.paymentSvc.ListProducts(ctx)
 	if err != nil || len(products) == 0 {
-		h.base.send(ctx, u.VKID, "Каталог услуг пока пуст.", keyboards.MainMenu())
+		h.base.send(ctx, u.VKID, "РљР°С‚Р°Р»РѕРі СѓСЃР»СѓРі РїРѕРєР° РїСѓСЃС‚.", keyboards.MainMenu())
 		return
 	}
 	var sb strings.Builder
-	sb.WriteString("Услуги и цены:\n\n")
+	sb.WriteString("РЈСЃР»СѓРіРё Рё С†РµРЅС‹:\n\n")
 	for _, p := range products {
-		sb.WriteString(fmt.Sprintf("- %s — %.0f RUB\n  %s\n\n", p.Name, p.Price, p.Description))
+		sb.WriteString(fmt.Sprintf("- %s вЂ” %.0f RUB\n  %s\n\n", p.Name, p.Price, p.Description))
 	}
 	h.base.send(ctx, u.VKID, sb.String(), keyboards.MainMenu())
 }
@@ -325,7 +338,7 @@ func (h *UserHandler) handleServices(ctx context.Context, u *models.User) {
 func (h *UserHandler) handleProfile(ctx context.Context, u *models.User) {
 	payments, _ := h.paymentSvc.ListByUser(ctx, u.ID)
 	text := fmt.Sprintf(
-		"Профиль\n\nИмя: %s %s\nБаланс: %.2f RUB\nЗапросов: %d (лимит: %d)\nРегистрация: %s\nПлатежей: %d",
+		"РџСЂРѕС„РёР»СЊ\n\nРРјСЏ: %s %s\nР‘Р°Р»Р°РЅСЃ: %.2f RUB\nР—Р°РїСЂРѕСЃРѕРІ: %d (Р»РёРјРёС‚: %d)\nР РµРіРёСЃС‚СЂР°С†РёСЏ: %s\nРџР»Р°С‚РµР¶РµР№: %d",
 		u.FirstName, u.LastName, u.Balance, u.RequestCount, u.RequestLimit, u.CreatedAt.Format("02.01.2006"), len(payments),
 	)
 	h.base.send(ctx, u.VKID, text, keyboards.MainMenu())
@@ -380,7 +393,7 @@ func (h *UserHandler) renderFAQ(ctx context.Context) string {
 	if strings.TrimSpace(faq) != "" {
 		return faq
 	}
-	return "Раздел FAQ пока не заполнен."
+	return "Р Р°Р·РґРµР» FAQ РїРѕРєР° РЅРµ Р·Р°РїРѕР»РЅРµРЅ."
 }
 
 func (h *UserHandler) loadPromptForState(ctx context.Context, state models.BotState) string {
