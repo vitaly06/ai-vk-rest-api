@@ -188,6 +188,10 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 	case "map_chat":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateMapChat)
 		h.base.send(ctx, u.VKID, "Карта включена. Пишите сообщение.", keyboards.AdminChatMenu())
+	case "admin_clear_mirror":
+		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Зеркало")
+	case "admin_clear_map":
+		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "Карта")
 	case "support":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateSupport)
 		h.base.send(ctx, u.VKID, "🛠 Чат поддержки.", keyboards.BackOnly())
@@ -986,6 +990,14 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 	if cmd == "back" || cmd == "admin_panel" {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
 		h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
+		return
+	}
+	switch strings.TrimSpace(strings.ToLower(text)) {
+	case strings.ToLower("Очистить Зеркало"):
+		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Зеркало")
+		return
+	case strings.ToLower("Очистить Карту"):
+		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "Карта")
 		return
 	}
 	if u.State == models.StateSupport {
