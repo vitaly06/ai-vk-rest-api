@@ -127,23 +127,23 @@ func AdminSettingsEditorMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Приветствие", "secondary", `{"cmd":"admin_edit_setting","key":"welcome_message"}`),
-				btn("Текст согласия", "secondary", `{"cmd":"admin_edit_setting","key":"consent_text"}`),
+				btn("�����������", "secondary", `{"cmd":"admin_edit_setting","key":"welcome_message"}`),
+				btn("����� ��������", "secondary", `{"cmd":"admin_edit_setting","key":"consent_text"}`),
 			},
 			{
-				btn("Управление FAQ", "secondary", `{"cmd":"admin_manage_faq"}`),
-				btn("Вопросы анкеты", "secondary", `{"cmd":"admin_manage_questions"}`),
+				btn("���������� FAQ", "secondary", `{"cmd":"admin_manage_faq"}`),
+				btn("������� ������", "secondary", `{"cmd":"admin_manage_questions"}`),
 			},
 			{
-				btn("Промпт Игра", "secondary", `{"cmd":"admin_edit_setting","key":"system_prompt_game"}`),
-				btn("Промпт Карта", "secondary", `{"cmd":"admin_edit_setting","key":"system_prompt_map"}`),
+				btn("������ ����", "secondary", `{"cmd":"admin_edit_setting","key":"system_prompt_game"}`),
+				btn("������ �����", "secondary", `{"cmd":"admin_edit_setting","key":"system_prompt_map"}`),
 			},
 			{
-				btn("Лимит по умолчанию", "secondary", `{"cmd":"admin_edit_setting","key":"default_request_limit"}`),
-				btn("Кулдаун по умолчанию", "secondary", `{"cmd":"admin_edit_setting","key":"default_cooldown_secs"}`),
+				btn("����� �� ���������", "secondary", `{"cmd":"admin_edit_setting","key":"default_request_limit"}`),
+				btn("������� �� ���������", "secondary", `{"cmd":"admin_edit_setting","key":"default_cooldown_secs"}`),
 			},
 			{
-				btn("В админку", "primary", `{"cmd":"admin_panel"}`),
+				btn("� �������", "primary", `{"cmd":"admin_panel"}`),
 			},
 		},
 	}
@@ -154,12 +154,12 @@ func AdminChatMenu() *Keyboard {
 		OneTime: false,
 		Buttons: [][]Button{
 			{
-				btn("Панель админа", "primary", `{"cmd":"admin_panel"}`),
-				btn("Поддержка", "secondary", `{"cmd":"support"}`),
+				btn("������ ������", "primary", `{"cmd":"admin_panel"}`),
+				btn("���������", "secondary", `{"cmd":"support"}`),
 			},
 			{
-				btn("Очистить Зеркало", "negative", `{"cmd":"admin_clear_mirror"}`),
-				btn("Очистить Карту", "negative", `{"cmd":"admin_clear_map"}`),
+				btn("�������� �������", "negative", `{"cmd":"admin_clear_mirror"}`),
+				btn("�������� �����", "negative", `{"cmd":"admin_clear_map"}`),
 			},
 		},
 	}
