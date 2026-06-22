@@ -121,6 +121,12 @@ func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg o
 		h.enterScenarioMode(ctx, u, models.StateMainChat)
 	case "map_chat":
 		h.enterScenarioMode(ctx, u, models.StateMapChat)
+	case "back":
+		h.base.send(ctx, u.VKID, "Выберите раздел.", keyboards.MainMenu())
+	case "faq":
+		h.handleFAQMenu(ctx, u)
+	case "faq_pick":
+		h.handleFAQPick(ctx, u, msg.Payload)
 	case "user_clear_mirror":
 		h.clearUserDialogHistory(ctx, u, models.DialogMain, "Зеркало")
 	case "user_clear_map":
@@ -134,8 +140,6 @@ func (h *UserHandler) handleMainState(ctx context.Context, u *models.User, msg o
 		h.handleServices(ctx, u)
 	case "profile":
 		h.handleProfile(ctx, u)
-	case "faq":
-		h.base.send(ctx, u.VKID, h.renderFAQ(ctx), keyboards.MainMenu())
 	case "pay_card":
 		h.initiatePayment(ctx, u)
 	case "pay_wallet":
@@ -357,27 +361,74 @@ func (h *UserHandler) loadQuestionnaireItems(ctx context.Context) []string {
 	return out
 }
 
-func (h *UserHandler) renderFAQ(ctx context.Context) string {
-	raw, _ := h.settingsRepo.Get(ctx, models.SettingFAQItems)
-	if strings.TrimSpace(raw) != "" {
-		var items []string
-		if err := json.Unmarshal([]byte(raw), &items); err == nil {
-			out := make([]string, 0, len(items))
-			for _, it := range items {
-				it = strings.TrimSpace(it)
-				if it != "" {
-					out = append(out, it)
-				}
-			}
-			if len(out) > 0 {
-				var sb strings.Builder
-				sb.WriteString("FAQ:\n\n")
-				for i, q := range out {
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, q))
-				}
-				return sb.String()
-			}
+func (h *UserHandler) handleFAQMenu(ctx context.Context, u *models.User) {
+	entries := h.loadFAQEntries(ctx)
+	if len(entries) == 0 {
+		h.base.send(ctx, u.VKID, h.renderFAQ(ctx), keyboards.MainMenu())
+		return
+	}
+
+	h.base.send(ctx, u.VKID, "Выберите вопрос кнопкой ниже.", h.buildUserFAQKeyboard(entries))
+}
+
+func (h *UserHandler) handleFAQPick(ctx context.Context, u *models.User, payloadJSON string) {
+	idx, ok := parseIndexPayload(payloadJSON)
+	if !ok {
+		h.base.send(ctx, u.VKID, "Не удалось определить вопрос FAQ.", keyboards.MainMenu())
+		return
+	}
+
+	entries := h.loadFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
+		h.base.send(ctx, u.VKID, "Вопрос FAQ не найден. Откройте список заново.", h.buildUserFAQKeyboard(entries))
+		return
+	}
+
+	answer := strings.TrimSpace(entries[idx].Answer)
+	if answer == "" {
+		answer = "Ответ пока не заполнен."
+	}
+
+	h.base.send(
+		ctx,
+		u.VKID,
+		fmt.Sprintf("❓ %s\n\n%s", entries[idx].Question, answer),
+		h.buildUserFAQKeyboard(entries),
+	)
+}
+
+func (h *UserHandler) buildUserFAQKeyboard(entries []FAQEntry) *keyboards.Keyboard {
+	kb := &keyboards.Keyboard{Inline: true}
+	for i, item := range entries {
+		label := item.Question
+		if len(label) > 34 {
+			label = label[:31] + "..."
 		}
+		kb.Buttons = append(kb.Buttons, []keyboards.Button{
+			keyboards.MakeBtn(label, "secondary", fmt.Sprintf(`{"cmd":"faq_pick","index":%d}`, i)),
+		})
+	}
+	kb.Buttons = append(kb.Buttons, []keyboards.Button{
+		keyboards.MakeBtn("↩️ В меню", "primary", `{"cmd":"back"}`),
+	})
+	return kb
+}
+
+func (h *UserHandler) loadFAQEntries(ctx context.Context) []FAQEntry {
+	raw, _ := h.settingsRepo.Get(ctx, models.SettingFAQItems)
+	return parseFAQEntries(raw, defaultFAQEntries())
+}
+
+func (h *UserHandler) renderFAQ(ctx context.Context) string {
+	entries := h.loadFAQEntries(ctx)
+	if len(entries) > 0 {
+		var sb strings.Builder
+		sb.WriteString("FAQ:\n\n")
+		for i, item := range entries {
+			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, item.Question))
+		}
+		sb.WriteString("\nВыберите вопрос кнопкой ниже.")
+		return sb.String()
 	}
 
 	faq, _ := h.settingsRepo.Get(ctx, models.SettingFAQText)

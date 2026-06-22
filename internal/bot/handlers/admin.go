@@ -36,17 +36,19 @@ type AdminHandler struct {
 
 const adminEditStatePrefix = "admin_edit:"
 const adminFAQAddState = "admin_faq_add"
+const adminFAQAddAnswerStatePrefix = "admin_faq_add_answer:"
 const adminFAQEditStatePrefix = "admin_faq_edit:"
+const adminFAQAnswerEditStatePrefix = "admin_faq_answer_edit:"
 const adminQuestionAddState = "admin_q_add"
 const adminQuestionEditStatePrefix = "admin_q_edit:"
 
 func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
-	if (u.State == models.BotState(adminFAQAddState) || u.State == models.BotState(adminQuestionAddState)) && cmd == "back" {
+	if (u.State == models.BotState(adminFAQAddState) || u.State == models.BotState(adminQuestionAddState) || strings.HasPrefix(string(u.State), adminFAQAddAnswerStatePrefix)) && cmd == "back" {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
 		h.handleSettingsMenu(ctx, u)
 		return
 	}
-	if (strings.HasPrefix(string(u.State), adminFAQEditStatePrefix) || strings.HasPrefix(string(u.State), adminQuestionEditStatePrefix)) && cmd == "back" {
+	if (strings.HasPrefix(string(u.State), adminFAQEditStatePrefix) || strings.HasPrefix(string(u.State), adminFAQAnswerEditStatePrefix) || strings.HasPrefix(string(u.State), adminQuestionEditStatePrefix)) && cmd == "back" {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
 		h.handleSettingsMenu(ctx, u)
 		return
@@ -57,11 +59,19 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		return
 	}
 	if cmd == "" && u.State == models.BotState(adminFAQAddState) && strings.TrimSpace(text) != "" {
-		h.handleFAQAddInput(ctx, u, text)
+		h.handleFAQAddQuestionInput(ctx, u, text)
+		return
+	}
+	if cmd == "" && strings.HasPrefix(string(u.State), adminFAQAddAnswerStatePrefix) && strings.TrimSpace(text) != "" {
+		h.handleFAQAddAnswerInput(ctx, u, text)
 		return
 	}
 	if cmd == "" && strings.HasPrefix(string(u.State), adminFAQEditStatePrefix) && strings.TrimSpace(text) != "" {
-		h.handleFAQEditInput(ctx, u, text)
+		h.handleFAQQuestionEditInput(ctx, u, text)
+		return
+	}
+	if cmd == "" && strings.HasPrefix(string(u.State), adminFAQAnswerEditStatePrefix) && strings.TrimSpace(text) != "" {
+		h.handleFAQAnswerEditInput(ctx, u, text)
 		return
 	}
 	if cmd == "" && u.State == models.BotState(adminQuestionAddState) && strings.TrimSpace(text) != "" {
@@ -161,6 +171,8 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.base.send(ctx, u.VKID, "Пришлите новый вопрос FAQ одним сообщением.", keyboards.BackOnly())
 	case "admin_faq_edit":
 		h.handleFAQEditStart(ctx, u, msg.Payload)
+	case "admin_faq_edit_answer":
+		h.handleFAQAnswerEditStart(ctx, u, msg.Payload)
 	case "admin_faq_delete":
 		h.handleFAQDelete(ctx, u, msg.Payload)
 	case "admin_manage_questions":
@@ -382,8 +394,8 @@ func (h *AdminHandler) handleAuditLogs(ctx context.Context, u *models.User, limi
 }
 
 func (h *AdminHandler) handleFAQManage(ctx context.Context, u *models.User) {
-	items, _ := h.getFAQItems(ctx)
-	h.base.send(ctx, u.VKID, h.formatIndexedList("FAQ", items), h.buildFAQKeyboard(items))
+	entries, _ := h.getFAQEntries(ctx)
+	h.base.send(ctx, u.VKID, h.formatFAQList(entries), h.buildFAQKeyboard(entries))
 }
 
 func (h *AdminHandler) handleFAQPick(ctx context.Context, u *models.User, payloadJSON string) {
@@ -392,16 +404,23 @@ func (h *AdminHandler) handleFAQPick(ctx context.Context, u *models.User, payloa
 		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", h.buildFAQKeyboard(nil))
 		return
 	}
-	items, _ := h.getFAQItems(ctx)
-	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "⚠️ Вопрос уже изменен или удален. Откройте список заново.", h.buildFAQKeyboard(items))
+	entries, _ := h.getFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос уже изменен или удален. Откройте список заново.", h.buildFAQKeyboard(entries))
 		return
+	}
+	answer := strings.TrimSpace(entries[idx].Answer)
+	if answer == "" {
+		answer = "(ответ пока не заполнен)"
 	}
 	kb := &keyboards.Keyboard{
 		Inline: true,
 		Buttons: [][]keyboards.Button{
 			{
-				keyboards.MakeBtn("✏️ Редактировать", "primary", fmt.Sprintf(`{"cmd":"admin_faq_edit","index":%d}`, idx)),
+				keyboards.MakeBtn("✏️ Вопрос", "primary", fmt.Sprintf(`{"cmd":"admin_faq_edit","index":%d}`, idx)),
+				keyboards.MakeBtn("💬 Ответ", "primary", fmt.Sprintf(`{"cmd":"admin_faq_edit_answer","index":%d}`, idx)),
+			},
+			{
 				keyboards.MakeBtn("🗑 Удалить", "negative", fmt.Sprintf(`{"cmd":"admin_faq_delete","index":%d}`, idx)),
 			},
 			{
@@ -409,7 +428,7 @@ func (h *AdminHandler) handleFAQPick(ctx context.Context, u *models.User, payloa
 			},
 		},
 	}
-	h.base.send(ctx, u.VKID, fmt.Sprintf("❓ Вопрос #%d:\n%s", idx+1, items[idx]), kb)
+	h.base.send(ctx, u.VKID, fmt.Sprintf("❓ Вопрос #%d:\n%s\n\n💬 Ответ:\n%s", idx+1, entries[idx].Question, answer), kb)
 }
 
 func (h *AdminHandler) handleFAQEditStart(ctx context.Context, u *models.User, payloadJSON string) {
@@ -418,13 +437,32 @@ func (h *AdminHandler) handleFAQEditStart(ctx context.Context, u *models.User, p
 		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
-	items, _ := h.getFAQItems(ctx)
-	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(items))
+	entries, _ := h.getFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(entries))
 		return
 	}
 	h.userSvc.UpdateState(ctx, u.VKID, models.BotState(fmt.Sprintf("%s%d", adminFAQEditStatePrefix, idx)))
-	h.base.send(ctx, u.VKID, fmt.Sprintf("Текущий вопрос:\n%s\n\nПришлите новый текст вопроса.", items[idx]), keyboards.BackOnly())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Текущий вопрос:\n%s\n\nПришлите новый текст вопроса.", entries[idx].Question), keyboards.BackOnly())
+}
+
+func (h *AdminHandler) handleFAQAnswerEditStart(ctx context.Context, u *models.User, payloadJSON string) {
+	idx, ok := parseIndexPayload(payloadJSON)
+	if !ok {
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
+		return
+	}
+	entries, _ := h.getFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(entries))
+		return
+	}
+	h.userSvc.UpdateState(ctx, u.VKID, models.BotState(fmt.Sprintf("%s%d", adminFAQAnswerEditStatePrefix, idx)))
+	answer := strings.TrimSpace(entries[idx].Answer)
+	if answer == "" {
+		answer = "(сейчас пусто)"
+	}
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Вопрос:\n%s\n\nТекущий ответ:\n%s\n\nПришлите новый текст ответа.", entries[idx].Question, answer), keyboards.BackOnly())
 }
 
 func (h *AdminHandler) handleFAQDelete(ctx context.Context, u *models.User, payloadJSON string) {
@@ -433,43 +471,86 @@ func (h *AdminHandler) handleFAQDelete(ctx context.Context, u *models.User, payl
 		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
-	items, _ := h.getFAQItems(ctx)
-	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(items))
+	entries, _ := h.getFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(entries))
 		return
 	}
-	items = append(items[:idx], items[idx+1:]...)
-	_ = h.saveFAQItems(ctx, items)
+	entries = append(entries[:idx], entries[idx+1:]...)
+	_ = h.saveFAQEntries(ctx, entries)
 	h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{ActorID: u.VKID, Action: "faq_delete", Details: fmt.Sprintf("index=%d", idx)})
 	h.handleFAQManage(ctx, u)
 }
 
-func (h *AdminHandler) handleFAQAddInput(ctx context.Context, u *models.User, text string) {
-	items, _ := h.getFAQItems(ctx)
-	items = append(items, strings.TrimSpace(text))
-	_ = h.saveFAQItems(ctx, items)
+func (h *AdminHandler) handleFAQAddQuestionInput(ctx context.Context, u *models.User, text string) {
+	question := strings.TrimSpace(text)
+	if question == "" {
+		h.base.send(ctx, u.VKID, "Вопрос не должен быть пустым.", keyboards.BackOnly())
+		return
+	}
+
+	encoded := encodeStateValue(question)
+	h.userSvc.UpdateState(ctx, u.VKID, models.BotState(adminFAQAddAnswerStatePrefix+encoded))
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Новый вопрос:\n%s\n\nТеперь пришлите ответ для этого вопроса.", question), keyboards.BackOnly())
+}
+
+func (h *AdminHandler) handleFAQAddAnswerInput(ctx context.Context, u *models.User, text string) {
+	encoded := strings.TrimPrefix(string(u.State), adminFAQAddAnswerStatePrefix)
+	question, ok := decodeStateValue(encoded)
+	if !ok || strings.TrimSpace(question) == "" {
+		h.userSvc.UpdateState(ctx, u.VKID, "")
+		h.base.send(ctx, u.VKID, "Не удалось восстановить вопрос FAQ. Попробуйте добавить его заново.", keyboards.AdminSettingsEditorMenu())
+		return
+	}
+
+	entries, _ := h.getFAQEntries(ctx)
+	entries = append(entries, FAQEntry{
+		Question: strings.TrimSpace(question),
+		Answer:   strings.TrimSpace(text),
+	})
+	_ = h.saveFAQEntries(ctx, entries)
 	h.userSvc.UpdateState(ctx, u.VKID, "")
 	h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{ActorID: u.VKID, Action: "faq_add"})
 	h.handleFAQManage(ctx, u)
 }
 
-func (h *AdminHandler) handleFAQEditInput(ctx context.Context, u *models.User, text string) {
+func (h *AdminHandler) handleFAQQuestionEditInput(ctx context.Context, u *models.User, text string) {
 	idx, err := strconv.Atoi(strings.TrimPrefix(string(u.State), adminFAQEditStatePrefix))
 	if err != nil {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
 		h.base.send(ctx, u.VKID, "❌ Ошибка индекса вопроса.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
-	items, _ := h.getFAQItems(ctx)
-	if idx < 0 || idx >= len(items) {
+	entries, _ := h.getFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(entries))
 		return
 	}
-	items[idx] = strings.TrimSpace(text)
-	_ = h.saveFAQItems(ctx, items)
+	entries[idx].Question = strings.TrimSpace(text)
+	_ = h.saveFAQEntries(ctx, entries)
 	h.userSvc.UpdateState(ctx, u.VKID, "")
 	h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{ActorID: u.VKID, Action: "faq_edit", Details: fmt.Sprintf("index=%d", idx)})
+	h.handleFAQManage(ctx, u)
+}
+
+func (h *AdminHandler) handleFAQAnswerEditInput(ctx context.Context, u *models.User, text string) {
+	idx, err := strconv.Atoi(strings.TrimPrefix(string(u.State), adminFAQAnswerEditStatePrefix))
+	if err != nil {
+		h.userSvc.UpdateState(ctx, u.VKID, "")
+		h.base.send(ctx, u.VKID, "❌ Ошибка индекса вопроса.", keyboards.AdminSettingsEditorMenu())
+		return
+	}
+	entries, _ := h.getFAQEntries(ctx)
+	if idx < 0 || idx >= len(entries) {
+		h.userSvc.UpdateState(ctx, u.VKID, "")
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(entries))
+		return
+	}
+	entries[idx].Answer = strings.TrimSpace(text)
+	_ = h.saveFAQEntries(ctx, entries)
+	h.userSvc.UpdateState(ctx, u.VKID, "")
+	h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{ActorID: u.VKID, Action: "faq_answer_edit", Details: fmt.Sprintf("index=%d", idx)})
 	h.handleFAQManage(ctx, u)
 }
 
@@ -565,12 +646,20 @@ func (h *AdminHandler) handleQuestionEditInput(ctx context.Context, u *models.Us
 	h.handleQuestionManage(ctx, u)
 }
 
-func (h *AdminHandler) getFAQItems(ctx context.Context) ([]string, error) {
-	return h.getStringListSetting(ctx, models.SettingFAQItems, defaultFAQItems())
+func (h *AdminHandler) getFAQEntries(ctx context.Context) ([]FAQEntry, error) {
+	raw, err := h.settingsRepo.Get(ctx, models.SettingFAQItems)
+	if err != nil {
+		return cloneFAQEntries(defaultFAQEntries()), nil
+	}
+	return parseFAQEntries(raw, defaultFAQEntries()), nil
 }
 
-func (h *AdminHandler) saveFAQItems(ctx context.Context, items []string) error {
-	return h.saveStringListSetting(ctx, models.SettingFAQItems, items)
+func (h *AdminHandler) saveFAQEntries(ctx context.Context, items []FAQEntry) error {
+	data, err := json.Marshal(cloneFAQEntries(items))
+	if err != nil {
+		return err
+	}
+	return h.settingsRepo.Set(ctx, models.SettingFAQItems, string(data))
 }
 
 func (h *AdminHandler) getQuestionnaireItems(ctx context.Context) ([]string, error) {
@@ -618,10 +707,10 @@ func (h *AdminHandler) saveStringListSetting(ctx context.Context, key string, it
 	return h.settingsRepo.Set(ctx, key, string(data))
 }
 
-func (h *AdminHandler) buildFAQKeyboard(items []string) *keyboards.Keyboard {
+func (h *AdminHandler) buildFAQKeyboard(items []FAQEntry) *keyboards.Keyboard {
 	kb := &keyboards.Keyboard{Inline: true}
-	for i, q := range items {
-		label := q
+	for i, item := range items {
+		label := item.Question
 		if len(label) > 28 {
 			label = label[:25] + "..."
 		}
@@ -634,6 +723,24 @@ func (h *AdminHandler) buildFAQKeyboard(items []string) *keyboards.Keyboard {
 		keyboards.MakeBtn("↩️ Назад", "secondary", `{"cmd":"admin_settings"}`),
 	})
 	return kb
+}
+
+func (h *AdminHandler) formatFAQList(items []FAQEntry) string {
+	var sb strings.Builder
+	sb.WriteString("⚙️ FAQ\n\n")
+	if len(items) == 0 {
+		sb.WriteString("Список пуст.\n")
+		return sb.String()
+	}
+	for i, item := range items {
+		answerState := "без ответа"
+		if strings.TrimSpace(item.Answer) != "" {
+			answerState = "ответ заполнен"
+		}
+		sb.WriteString(fmt.Sprintf("%d. %s [%s]\n", i+1, item.Question, answerState))
+	}
+	sb.WriteString("\nВыберите пункт кнопкой ниже.")
+	return sb.String()
 }
 
 func (h *AdminHandler) buildQuestionKeyboard(items []string) *keyboards.Keyboard {
@@ -676,13 +783,6 @@ func parseIndexPayload(payloadJSON string) (int, bool) {
 		return 0, false
 	}
 	return p.Index, true
-}
-
-func defaultFAQItems() []string {
-	return []string{
-		"Как начать пользоваться ботом?",
-		"Как пополнить баланс?",
-	}
 }
 
 func defaultQuestionnaireItems() []string {
