@@ -22,7 +22,7 @@ import (
 	userSvc "github.com/vitaly06/ai-vk-bot/internal/services/user"
 )
 
-// AdminHandler вЂ” РѕР±СЂР°Р±РѕС‚С‡РёРє РєРѕРјР°РЅРґ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°
+// AdminHandler — обработчик команд администратора
 type AdminHandler struct {
 	base         *baseHandler
 	userSvc      *userSvc.Service
@@ -53,7 +53,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 	}
 	if strings.HasPrefix(string(u.State), adminEditStatePrefix) && cmd == "back" {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РѕС‚РјРµРЅРµРЅРѕ.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "Редактирование отменено.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	if cmd == "" && u.State == models.BotState(adminFAQAddState) && strings.TrimSpace(text) != "" {
@@ -100,7 +100,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		}
 		json.Unmarshal([]byte(msg.Payload), &p)
 		h.userSvc.Ban(ctx, u.VKID, p.VKID, nil)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("рџљ« РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ [id%d] Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ.", p.VKID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("🚫 Пользователь [id%d] заблокирован.", p.VKID), keyboards.AdminMenu())
 		h.logAudit(ctx, u.VKID, p.VKID, "ban", "")
 	case "admin_cool":
 		var p struct {
@@ -111,7 +111,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		until := time.Now().Add(time.Duration(p.Mins) * time.Minute)
 		h.userSvc.Ban(ctx, u.VKID, p.VKID, &until)
 		h.base.send(ctx, u.VKID,
-			fmt.Sprintf("вќ„пёЏ [id%d] РІ РѕС…Р»Р°Р¶РґРµРЅРёРё РЅР° %d РјРёРЅ. (РґРѕ %s).", p.VKID, p.Mins, until.Format("15:04")),
+			fmt.Sprintf("❄️ [id%d] в охлаждении на %d мин. (до %s).", p.VKID, p.Mins, until.Format("15:04")),
 			keyboards.AdminMenu())
 		h.logAudit(ctx, u.VKID, p.VKID, "cooldown", fmt.Sprintf("%dmin", p.Mins))
 	case "admin_unban":
@@ -120,7 +120,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		}
 		json.Unmarshal([]byte(msg.Payload), &p)
 		h.userSvc.Unban(ctx, p.VKID)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("вњ… РћРіСЂР°РЅРёС‡РµРЅРёРµ СЃРЅСЏС‚Рѕ СЃ [id%d].", p.VKID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Ограничение снято с [id%d].", p.VKID), keyboards.AdminMenu())
 		h.logAudit(ctx, u.VKID, p.VKID, "unban", "")
 	case "admin_set_mod":
 		var p struct {
@@ -128,7 +128,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		}
 		json.Unmarshal([]byte(msg.Payload), &p)
 		h.userSvc.SetRole(ctx, p.VKID, models.RoleModerator)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("рџ‘® [id%d] РЅР°Р·РЅР°С‡РµРЅ РјРѕРґРµСЂР°С‚РѕСЂРѕРј.", p.VKID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("👮 [id%d] назначен модератором.", p.VKID), keyboards.AdminMenu())
 		h.logAudit(ctx, u.VKID, p.VKID, "set_mod", "")
 	case "admin_set_user":
 		var p struct {
@@ -136,7 +136,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		}
 		json.Unmarshal([]byte(msg.Payload), &p)
 		h.userSvc.SetRole(ctx, p.VKID, models.RoleUser)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("рџ‘¤ [id%d] СЂР°Р·Р¶Р°Р»РѕРІР°РЅ РґРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.", p.VKID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("👤 [id%d] разжалован до пользователя.", p.VKID), keyboards.AdminMenu())
 		h.logAudit(ctx, u.VKID, p.VKID, "set_user", "")
 	case "admin_set_limit":
 		var p struct {
@@ -144,7 +144,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		}
 		json.Unmarshal([]byte(msg.Payload), &p)
 		h.base.send(ctx, u.VKID,
-			fmt.Sprintf("Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ Р»РёРјРёС‚ Р·Р°РїСЂРѕСЃРѕРІ РґР»СЏ [id%d]:\n/setlimit %d <С‡РёСЃР»Рѕ>", p.VKID, p.VKID),
+			fmt.Sprintf("Введите новый лимит запросов для [id%d]:\n/setlimit %d <число>", p.VKID, p.VKID),
 			keyboards.AdminMenu())
 	case "admin_metrics":
 		h.handleMetrics(ctx, u)
@@ -158,7 +158,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.handleFAQPick(ctx, u, msg.Payload)
 	case "admin_faq_add":
 		h.userSvc.UpdateState(ctx, u.VKID, models.BotState(adminFAQAddState))
-		h.base.send(ctx, u.VKID, "РџСЂРёС€Р»РёС‚Рµ РЅРѕРІС‹Р№ РІРѕРїСЂРѕСЃ FAQ РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј.", keyboards.BackOnly())
+		h.base.send(ctx, u.VKID, "Пришлите новый вопрос FAQ одним сообщением.", keyboards.BackOnly())
 	case "admin_faq_edit":
 		h.handleFAQEditStart(ctx, u, msg.Payload)
 	case "admin_faq_delete":
@@ -169,7 +169,7 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.handleQuestionPick(ctx, u, msg.Payload)
 	case "admin_q_add":
 		h.userSvc.UpdateState(ctx, u.VKID, models.BotState(adminQuestionAddState))
-		h.base.send(ctx, u.VKID, "РџСЂРёС€Р»РёС‚Рµ РЅРѕРІС‹Р№ РІРѕРїСЂРѕСЃ Р°РЅРєРµС‚С‹ РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј.", keyboards.BackOnly())
+		h.base.send(ctx, u.VKID, "Пришлите новый вопрос анкеты одним сообщением.", keyboards.BackOnly())
 	case "admin_q_edit":
 		h.handleQuestionEditStart(ctx, u, msg.Payload)
 	case "admin_q_delete":
@@ -184,22 +184,22 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 		h.handleAccessDecision(ctx, u, msg, false)
 	case "main_chat":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateMainChat)
-		h.base.send(ctx, u.VKID, "Р—РµСЂРєР°Р»Рѕ РІРєР»СЋС‡РµРЅРѕ. РџРёС€РёС‚Рµ СЃРѕРѕР±С‰РµРЅРёРµ.", keyboards.AdminChatMenu())
+		h.base.send(ctx, u.VKID, "Зеркало включено. Пишите сообщение.", keyboards.AdminChatMenu())
 	case "map_chat":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateMapChat)
-		h.base.send(ctx, u.VKID, "РљР°СЂС‚Р° РІРєР»СЋС‡РµРЅР°. РџРёС€РёС‚Рµ СЃРѕРѕР±С‰РµРЅРёРµ.", keyboards.AdminChatMenu())
+		h.base.send(ctx, u.VKID, "Карта включена. Пишите сообщение.", keyboards.AdminChatMenu())
 	case "admin_clear_mirror":
-		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Р—РµСЂРєР°Р»Рѕ")
+		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Зеркало")
 	case "admin_clear_map":
-		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "РљР°СЂС‚Р°")
+		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "Карта")
 	case "support":
 		h.userSvc.UpdateState(ctx, u.VKID, models.StateSupport)
-		h.base.send(ctx, u.VKID, "рџ›  Р§Р°С‚ РїРѕРґРґРµСЂР¶РєРё.", keyboards.BackOnly())
+		h.base.send(ctx, u.VKID, "🛠 Чат поддержки.", keyboards.BackOnly())
 	case "admin_panel":
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "рџ‘‘ РџР°РЅРµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
 	default:
-		// Р•СЃР»Рё Р°РґРјРёРЅ РІ СЂРµР¶РёРјРµ РґРёР°Р»РѕРіР° вЂ” РѕС‚РїСЂР°РІР»СЏРµРј РІ AI
+		// Если админ в режиме диалога — отправляем в AI
 		if u.State == models.StateMainChat || u.State == models.StateMapChat || u.State == models.StateSupport {
 			h.handleAIChat(ctx, u, msg, cmd, text)
 		} else {
@@ -209,24 +209,24 @@ func (h *AdminHandler) Handle(ctx context.Context, u *models.User, msg object.Me
 }
 
 func (h *AdminHandler) handleInviteMenu(ctx context.Context, u *models.User) {
-	link, err := h.inviteSvc.Create(ctx, u.VKID, 1) // РѕРґРЅРѕСЂР°Р·РѕРІР°СЏ
+	link, err := h.inviteSvc.Create(ctx, u.VKID, 1) // одноразовая
 	if err != nil {
-		h.base.send(ctx, u.VKID, "вќЊ РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ СЃСЃС‹Р»РєРё: "+err.Error(), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "❌ Ошибка создания ссылки: "+err.Error(), keyboards.AdminMenu())
 		return
 	}
 	h.base.send(ctx, u.VKID,
-		fmt.Sprintf("вњ… РќРѕРІР°СЏ СЃСЃС‹Р»РєР°-РїСЂРёРіР»Р°С€РµРЅРёРµ (РѕРґРЅРѕСЂР°Р·РѕРІР°СЏ):\n%s\n\nР”РµР№СЃС‚РІСѓРµС‚ 72 С‡Р°СЃР°.", link.URL),
+		fmt.Sprintf("✅ Новая ссылка-приглашение (одноразовая):\n%s\n\nДействует 72 часа.", link.URL),
 		keyboards.AdminMenu())
 }
 
 func (h *AdminHandler) handleUsersPage(ctx context.Context, u *models.User, offset int) {
 	allUsers, err := h.userSvc.ListAll(ctx)
 	if err != nil {
-		h.base.send(ctx, u.VKID, "вќЊ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "❌ Ошибка получения пользователей", keyboards.AdminMenu())
 		return
 	}
 	if len(allUsers) == 0 {
-		h.base.send(ctx, u.VKID, "РџРѕР»СЊР·РѕРІР°С‚РµР»РµР№ РЅРµС‚.", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "Пользователей нет.", keyboards.AdminMenu())
 		return
 	}
 	end := offset + 8
@@ -241,15 +241,15 @@ func (h *AdminHandler) handleUsersPage(ctx context.Context, u *models.User, offs
 		if name == "" {
 			name = fmt.Sprintf("id%d", usr.VKID)
 		}
-		roleIcon := "рџ‘¤"
+		roleIcon := "👤"
 		if usr.Role == models.RoleModerator {
-			roleIcon = "рџ‘®"
+			roleIcon = "👮"
 		} else if usr.Role == models.RoleAdmin {
-			roleIcon = "рџ‘‘"
+			roleIcon = "👑"
 		}
 		statusIcon := ""
 		if usr.Status == models.StatusBanned || usr.Status == models.StatusRestricted {
-			statusIcon = " рџљ«"
+			statusIcon = " 🚫"
 		}
 		btns = append(btns, keyboards.UserButton{
 			VKID: usr.VKID,
@@ -257,41 +257,41 @@ func (h *AdminHandler) handleUsersPage(ctx context.Context, u *models.User, offs
 		})
 	}
 	h.base.send(ctx, u.VKID,
-		fmt.Sprintf("рџ‘Ґ РџРѕР»СЊР·РѕРІР°С‚РµР»Рё (%dвЂ“%d РёР· %d)\n\nРќР°Р¶РјРёС‚Рµ РЅР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:", offset+1, end, len(allUsers)),
+		fmt.Sprintf("👥 Пользователи (%d–%d из %d)\n\nНажмите на пользователя:", offset+1, end, len(allUsers)),
 		keyboards.UserListInline(btns, offset, len(allUsers)))
 }
 
 func (h *AdminHandler) handleUserDetail(ctx context.Context, admin *models.User, targetVKID int64) {
 	target, err := h.userSvc.GetByVKID(ctx, targetVKID)
 	if err != nil || target == nil {
-		h.base.send(ctx, admin.VKID, "вќЊ РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ РЅР°Р№РґРµРЅ.", keyboards.AdminMenu())
+		h.base.send(ctx, admin.VKID, "❌ Пользователь не найден.", keyboards.AdminMenu())
 		return
 	}
-	statusEmoji := "рџџў"
+	statusEmoji := "🟢"
 	switch target.Status {
 	case models.StatusBanned:
-		statusEmoji = "рџ”ґ"
+		statusEmoji = "🔴"
 	case models.StatusRestricted:
-		statusEmoji = "рџџЎ"
+		statusEmoji = "🟡"
 	case models.StatusPending:
-		statusEmoji = "РІС™Р„"
+		statusEmoji = "вљЄ"
 	}
-	banInfo := "вЂ”"
+	banInfo := "—"
 	if target.BannedUntil != nil {
 		banInfo = target.BannedUntil.Format("02.01.2006 15:04")
 	}
-	limitStr := "РІв‚¬С›"
+	limitStr := "в€ћ"
 	if target.RequestLimit > 0 {
 		limitStr = fmt.Sprintf("%d", target.RequestLimit)
 	}
 	text := fmt.Sprintf(
-		"рџ‘¤ [id%d|%s %s]\n\n"+
-			"Р РѕР»СЊ: %s\n"+
-			"%s РЎС‚Р°С‚СѓСЃ: %s\n"+
-			"рџ’¬ Р—Р°РїСЂРѕСЃРѕРІ: %d / %s\n"+
-			"рџ’° Р‘Р°Р»Р°РЅСЃ: %.2f в‚Ѕ\n"+
-			"рџ•ђ РћРіСЂР°РЅРёС‡РµРЅ РґРѕ: %s\n"+
-			"рџ“… Р РµРіРёСЃС‚СЂР°С†РёСЏ: %s",
+		"👤 [id%d|%s %s]\n\n"+
+			"Роль: %s\n"+
+			"%s Статус: %s\n"+
+			"💬 Запросов: %d / %s\n"+
+			"💰 Баланс: %.2f ₽\n"+
+			"🕐 Ограничен до: %s\n"+
+			"📅 Регистрация: %s",
 		target.VKID, target.FirstName, target.LastName,
 		target.Role,
 		statusEmoji, target.Status,
@@ -306,12 +306,12 @@ func (h *AdminHandler) handleUserDetail(ctx context.Context, admin *models.User,
 func (h *AdminHandler) handleMetrics(ctx context.Context, u *models.User) {
 	m := h.mon.GetMetrics(ctx)
 	text := fmt.Sprintf(
-		"рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі\n\n"+
-			"рџ‘¤ РђРєС‚РёРІРЅС‹С…: %d\n"+
-			"рџ¤– AI Р·Р°РїСЂРѕСЃРѕРІ СЃРµРіРѕРґРЅСЏ: %d\n"+
-			"вќЊ РћС€РёР±РѕРє СЃРµРіРѕРґРЅСЏ: %d\n"+
-			"рџ’ѕ РџР°РјСЏС‚СЊ: %.1f РњР‘\n"+
-			"вЏ± Uptime: %s",
+		"📊 Мониторинг\n\n"+
+			"👤 Активных: %d\n"+
+			"🤖 AI запросов сегодня: %d\n"+
+			"❌ Ошибок сегодня: %d\n"+
+			"💾 Память: %.1f МБ\n"+
+			"⏱ Uptime: %s",
 		m.ActiveUsers,
 		m.AICallsToday,
 		m.ErrorsToday,
@@ -325,44 +325,44 @@ func (h *AdminHandler) handleSettingsMenu(ctx context.Context, u *models.User) {
 	settings, _ := h.settingsRepo.GetAll(ctx)
 	welcome := settings[models.SettingWelcomeMessage]
 	if welcome == "" {
-		welcome = "(РЅРµ Р·Р°РґР°РЅРѕ)"
+		welcome = "(не задано)"
 	}
 	h.base.send(ctx, u.VKID,
-		"вљ™пёЏ РќР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р°\n\nР’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РІ РјРµРЅСЋ РЅРёР¶Рµ. РџРѕСЃР»Рµ РІС‹Р±РѕСЂР° РѕС‚РїСЂР°РІСЊС‚Рµ РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј.\n\nРўРµРєСѓС‰РµРµ welcome:\n"+welcome,
+		"⚙️ Настройки бота\n\nВыберите параметр в меню ниже. После выбора отправьте новое значение одним сообщением.\n\nТекущее welcome:\n"+welcome,
 		keyboards.AdminSettingsEditorMenu())
 }
 
 func (h *AdminHandler) handleModsMenu(ctx context.Context, u *models.User) {
 	mods, _ := h.userSvc.ListAll(ctx)
 	var sb strings.Builder
-	sb.WriteString("рџ‘® РњРѕРґРµСЂР°С‚РѕСЂС‹:\n")
+	sb.WriteString("👮 Модераторы:\n")
 	count := 0
 	for _, m := range mods {
 		if m.Role == models.RoleModerator {
-			sb.WriteString(fmt.Sprintf("вЂў [id%d|%s %s]\n", m.VKID, m.FirstName, m.LastName))
+			sb.WriteString(fmt.Sprintf("• [id%d|%s %s]\n", m.VKID, m.FirstName, m.LastName))
 			count++
 		}
 	}
 	if count == 0 {
-		sb.WriteString("РќРµС‚ РјРѕРґРµСЂР°С‚РѕСЂРѕРІ\n")
+		sb.WriteString("Нет модераторов\n")
 	}
-	sb.WriteString("\nРљРѕРјР°РЅРґС‹:\n/addmod <vk_id> вЂ” РґРѕР±Р°РІРёС‚СЊ РјРѕРґРµСЂР°С‚РѕСЂР°\n/delmod <vk_id> вЂ” СѓРґР°Р»РёС‚СЊ")
+	sb.WriteString("\nКоманды:\n/addmod <vk_id> — добавить модератора\n/delmod <vk_id> — удалить")
 	h.base.send(ctx, u.VKID, sb.String(), keyboards.AdminMenu())
 }
 
 func (h *AdminHandler) handleAuditLogs(ctx context.Context, u *models.User, limit, offset int) {
 	logs, err := h.settingsRepo.GetAuditLogs(ctx, limit, offset)
 	if err != nil {
-		h.base.send(ctx, u.VKID, "вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё Р°СѓРґРёС‚Р°.", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "❌ Ошибка загрузки аудита.", keyboards.AdminMenu())
 		return
 	}
 	if len(logs) == 0 {
-		h.base.send(ctx, u.VKID, "рџ“ќ РђСѓРґРёС‚ РїСѓСЃС‚.", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "📝 Аудит пуст.", keyboards.AdminMenu())
 		return
 	}
 
 	var sb strings.Builder
-	sb.WriteString("рџ“ќ РџРѕСЃР»РµРґРЅРёРµ РґРµР№СЃС‚РІРёСЏ:\n\n")
+	sb.WriteString("📝 Последние действия:\n\n")
 	for i, l := range logs {
 		target := "-"
 		if l.TargetID != nil {
@@ -389,53 +389,53 @@ func (h *AdminHandler) handleFAQManage(ctx context.Context, u *models.User) {
 func (h *AdminHandler) handleFAQPick(ctx context.Context, u *models.User, payloadJSON string) {
 	idx, ok := parseIndexPayload(payloadJSON)
 	if !ok {
-		h.base.send(ctx, u.VKID, "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІРѕРїСЂРѕСЃ.", h.buildFAQKeyboard(nil))
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", h.buildFAQKeyboard(nil))
 		return
 	}
 	items, _ := h.getFAQItems(ctx)
 	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ СѓР¶Рµ РёР·РјРµРЅРµРЅ РёР»Рё СѓРґР°Р»РµРЅ. РћС‚РєСЂРѕР№С‚Рµ СЃРїРёСЃРѕРє Р·Р°РЅРѕРІРѕ.", h.buildFAQKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос уже изменен или удален. Откройте список заново.", h.buildFAQKeyboard(items))
 		return
 	}
 	kb := &keyboards.Keyboard{
 		Inline: true,
 		Buttons: [][]keyboards.Button{
 			{
-				keyboards.MakeBtn("вњЏпёЏ Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ", "primary", fmt.Sprintf(`{"cmd":"admin_faq_edit","index":%d}`, idx)),
-				keyboards.MakeBtn("рџ—‘ РЈРґР°Р»РёС‚СЊ", "negative", fmt.Sprintf(`{"cmd":"admin_faq_delete","index":%d}`, idx)),
+				keyboards.MakeBtn("✏️ Редактировать", "primary", fmt.Sprintf(`{"cmd":"admin_faq_edit","index":%d}`, idx)),
+				keyboards.MakeBtn("🗑 Удалить", "negative", fmt.Sprintf(`{"cmd":"admin_faq_delete","index":%d}`, idx)),
 			},
 			{
-				keyboards.MakeBtn("в†©пёЏ Рљ СЃРїРёСЃРєСѓ", "secondary", `{"cmd":"admin_manage_faq"}`),
+				keyboards.MakeBtn("↩️ К списку", "secondary", `{"cmd":"admin_manage_faq"}`),
 			},
 		},
 	}
-	h.base.send(ctx, u.VKID, fmt.Sprintf("вќ“ Р’РѕРїСЂРѕСЃ #%d:\n%s", idx+1, items[idx]), kb)
+	h.base.send(ctx, u.VKID, fmt.Sprintf("❓ Вопрос #%d:\n%s", idx+1, items[idx]), kb)
 }
 
 func (h *AdminHandler) handleFAQEditStart(ctx context.Context, u *models.User, payloadJSON string) {
 	idx, ok := parseIndexPayload(payloadJSON)
 	if !ok {
-		h.base.send(ctx, u.VKID, "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІРѕРїСЂРѕСЃ.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	items, _ := h.getFAQItems(ctx)
 	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ РЅРµ РЅР°Р№РґРµРЅ.", h.buildFAQKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(items))
 		return
 	}
 	h.userSvc.UpdateState(ctx, u.VKID, models.BotState(fmt.Sprintf("%s%d", adminFAQEditStatePrefix, idx)))
-	h.base.send(ctx, u.VKID, fmt.Sprintf("РўРµРєСѓС‰РёР№ РІРѕРїСЂРѕСЃ:\n%s\n\nРџСЂРёС€Р»РёС‚Рµ РЅРѕРІС‹Р№ С‚РµРєСЃС‚ РІРѕРїСЂРѕСЃР°.", items[idx]), keyboards.BackOnly())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Текущий вопрос:\n%s\n\nПришлите новый текст вопроса.", items[idx]), keyboards.BackOnly())
 }
 
 func (h *AdminHandler) handleFAQDelete(ctx context.Context, u *models.User, payloadJSON string) {
 	idx, ok := parseIndexPayload(payloadJSON)
 	if !ok {
-		h.base.send(ctx, u.VKID, "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІРѕРїСЂРѕСЃ.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	items, _ := h.getFAQItems(ctx)
 	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ РЅРµ РЅР°Р№РґРµРЅ.", h.buildFAQKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(items))
 		return
 	}
 	items = append(items[:idx], items[idx+1:]...)
@@ -457,13 +457,13 @@ func (h *AdminHandler) handleFAQEditInput(ctx context.Context, u *models.User, t
 	idx, err := strconv.Atoi(strings.TrimPrefix(string(u.State), adminFAQEditStatePrefix))
 	if err != nil {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "вќЊ РћС€РёР±РєР° РёРЅРґРµРєСЃР° РІРѕРїСЂРѕСЃР°.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "❌ Ошибка индекса вопроса.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	items, _ := h.getFAQItems(ctx)
 	if idx < 0 || idx >= len(items) {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ РЅРµ РЅР°Р№РґРµРЅ.", h.buildFAQKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildFAQKeyboard(items))
 		return
 	}
 	items[idx] = strings.TrimSpace(text)
@@ -475,59 +475,59 @@ func (h *AdminHandler) handleFAQEditInput(ctx context.Context, u *models.User, t
 
 func (h *AdminHandler) handleQuestionManage(ctx context.Context, u *models.User) {
 	items, _ := h.getQuestionnaireItems(ctx)
-	h.base.send(ctx, u.VKID, h.formatIndexedList("РЎС‚Р°СЂС‚РѕРІР°СЏ Р°РЅРєРµС‚Р°", items), h.buildQuestionKeyboard(items))
+	h.base.send(ctx, u.VKID, h.formatIndexedList("Стартовая анкета", items), h.buildQuestionKeyboard(items))
 }
 
 func (h *AdminHandler) handleQuestionPick(ctx context.Context, u *models.User, payloadJSON string) {
 	idx, ok := parseIndexPayload(payloadJSON)
 	if !ok {
-		h.base.send(ctx, u.VKID, "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІРѕРїСЂРѕСЃ.", h.buildQuestionKeyboard(nil))
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", h.buildQuestionKeyboard(nil))
 		return
 	}
 	items, _ := h.getQuestionnaireItems(ctx)
 	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ СѓР¶Рµ РёР·РјРµРЅРµРЅ РёР»Рё СѓРґР°Р»РµРЅ. РћС‚РєСЂРѕР№С‚Рµ СЃРїРёСЃРѕРє Р·Р°РЅРѕРІРѕ.", h.buildQuestionKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос уже изменен или удален. Откройте список заново.", h.buildQuestionKeyboard(items))
 		return
 	}
 	kb := &keyboards.Keyboard{
 		Inline: true,
 		Buttons: [][]keyboards.Button{
 			{
-				keyboards.MakeBtn("вњЏпёЏ Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ", "primary", fmt.Sprintf(`{"cmd":"admin_q_edit","index":%d}`, idx)),
-				keyboards.MakeBtn("рџ—‘ РЈРґР°Р»РёС‚СЊ", "negative", fmt.Sprintf(`{"cmd":"admin_q_delete","index":%d}`, idx)),
+				keyboards.MakeBtn("✏️ Редактировать", "primary", fmt.Sprintf(`{"cmd":"admin_q_edit","index":%d}`, idx)),
+				keyboards.MakeBtn("🗑 Удалить", "negative", fmt.Sprintf(`{"cmd":"admin_q_delete","index":%d}`, idx)),
 			},
 			{
-				keyboards.MakeBtn("в†©пёЏ Рљ СЃРїРёСЃРєСѓ", "secondary", `{"cmd":"admin_manage_questions"}`),
+				keyboards.MakeBtn("↩️ К списку", "secondary", `{"cmd":"admin_manage_questions"}`),
 			},
 		},
 	}
-	h.base.send(ctx, u.VKID, fmt.Sprintf("рџ“ќ Р’РѕРїСЂРѕСЃ #%d:\n%s", idx+1, items[idx]), kb)
+	h.base.send(ctx, u.VKID, fmt.Sprintf("📝 Вопрос #%d:\n%s", idx+1, items[idx]), kb)
 }
 
 func (h *AdminHandler) handleQuestionEditStart(ctx context.Context, u *models.User, payloadJSON string) {
 	idx, ok := parseIndexPayload(payloadJSON)
 	if !ok {
-		h.base.send(ctx, u.VKID, "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІРѕРїСЂРѕСЃ.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	items, _ := h.getQuestionnaireItems(ctx)
 	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ РЅРµ РЅР°Р№РґРµРЅ.", h.buildQuestionKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildQuestionKeyboard(items))
 		return
 	}
 	h.userSvc.UpdateState(ctx, u.VKID, models.BotState(fmt.Sprintf("%s%d", adminQuestionEditStatePrefix, idx)))
-	h.base.send(ctx, u.VKID, fmt.Sprintf("РўРµРєСѓС‰РёР№ РІРѕРїСЂРѕСЃ:\n%s\n\nРџСЂРёС€Р»РёС‚Рµ РЅРѕРІС‹Р№ С‚РµРєСЃС‚ РІРѕРїСЂРѕСЃР°.", items[idx]), keyboards.BackOnly())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Текущий вопрос:\n%s\n\nПришлите новый текст вопроса.", items[idx]), keyboards.BackOnly())
 }
 
 func (h *AdminHandler) handleQuestionDelete(ctx context.Context, u *models.User, payloadJSON string) {
 	idx, ok := parseIndexPayload(payloadJSON)
 	if !ok {
-		h.base.send(ctx, u.VKID, "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІРѕРїСЂРѕСЃ.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "❌ Не удалось определить вопрос.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	items, _ := h.getQuestionnaireItems(ctx)
 	if idx < 0 || idx >= len(items) {
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ РЅРµ РЅР°Р№РґРµРЅ.", h.buildQuestionKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildQuestionKeyboard(items))
 		return
 	}
 	items = append(items[:idx], items[idx+1:]...)
@@ -549,13 +549,13 @@ func (h *AdminHandler) handleQuestionEditInput(ctx context.Context, u *models.Us
 	idx, err := strconv.Atoi(strings.TrimPrefix(string(u.State), adminQuestionEditStatePrefix))
 	if err != nil {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "вќЊ РћС€РёР±РєР° РёРЅРґРµРєСЃР° РІРѕРїСЂРѕСЃР°.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "❌ Ошибка индекса вопроса.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	items, _ := h.getQuestionnaireItems(ctx)
 	if idx < 0 || idx >= len(items) {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "вљ пёЏ Р’РѕРїСЂРѕСЃ РЅРµ РЅР°Р№РґРµРЅ.", h.buildQuestionKeyboard(items))
+		h.base.send(ctx, u.VKID, "⚠️ Вопрос не найден.", h.buildQuestionKeyboard(items))
 		return
 	}
 	items[idx] = strings.TrimSpace(text)
@@ -630,8 +630,8 @@ func (h *AdminHandler) buildFAQKeyboard(items []string) *keyboards.Keyboard {
 		})
 	}
 	kb.Buttons = append(kb.Buttons, []keyboards.Button{
-		keyboards.MakeBtn("вћ• Р”РѕР±Р°РІРёС‚СЊ РІРѕРїСЂРѕСЃ", "positive", `{"cmd":"admin_faq_add"}`),
-		keyboards.MakeBtn("в†©пёЏ РќР°Р·Р°Рґ", "secondary", `{"cmd":"admin_settings"}`),
+		keyboards.MakeBtn("➕ Добавить вопрос", "positive", `{"cmd":"admin_faq_add"}`),
+		keyboards.MakeBtn("↩️ Назад", "secondary", `{"cmd":"admin_settings"}`),
 	})
 	return kb
 }
@@ -648,23 +648,23 @@ func (h *AdminHandler) buildQuestionKeyboard(items []string) *keyboards.Keyboard
 		})
 	}
 	kb.Buttons = append(kb.Buttons, []keyboards.Button{
-		keyboards.MakeBtn("вћ• Р”РѕР±Р°РІРёС‚СЊ РІРѕРїСЂРѕСЃ", "positive", `{"cmd":"admin_q_add"}`),
-		keyboards.MakeBtn("в†©пёЏ РќР°Р·Р°Рґ", "secondary", `{"cmd":"admin_settings"}`),
+		keyboards.MakeBtn("➕ Добавить вопрос", "positive", `{"cmd":"admin_q_add"}`),
+		keyboards.MakeBtn("↩️ Назад", "secondary", `{"cmd":"admin_settings"}`),
 	})
 	return kb
 }
 
 func (h *AdminHandler) formatIndexedList(title string, items []string) string {
 	var sb strings.Builder
-	sb.WriteString("вљ™пёЏ " + title + "\n\n")
+	sb.WriteString("⚙️ " + title + "\n\n")
 	if len(items) == 0 {
-		sb.WriteString("РЎРїРёСЃРѕРє РїСѓСЃС‚.\n")
+		sb.WriteString("Список пуст.\n")
 		return sb.String()
 	}
 	for i, q := range items {
 		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, q))
 	}
-	sb.WriteString("\nР’С‹Р±РµСЂРёС‚Рµ РїСѓРЅРєС‚ РєРЅРѕРїРєРѕР№ РЅРёР¶Рµ.")
+	sb.WriteString("\nВыберите пункт кнопкой ниже.")
 	return sb.String()
 }
 
@@ -680,16 +680,16 @@ func parseIndexPayload(payloadJSON string) (int, bool) {
 
 func defaultFAQItems() []string {
 	return []string{
-		"РљР°Рє РЅР°С‡Р°С‚СЊ РїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ Р±РѕС‚РѕРј?",
-		"РљР°Рє РїРѕРїРѕР»РЅРёС‚СЊ Р±Р°Р»Р°РЅСЃ?",
+		"Как начать пользоваться ботом?",
+		"Как пополнить баланс?",
 	}
 }
 
 func defaultQuestionnaireItems() []string {
 	return []string{
-		"РљР°Рє РІР°СЃ Р·РѕРІСѓС‚?",
-		"Р§РµРј РІС‹ Р·Р°РЅРёРјР°РµС‚РµСЃСЊ?",
-		"РљР°Рє РІС‹ СѓР·РЅР°Р»Рё Рѕ РЅР°СЃ?",
+		"Как вас зовут?",
+		"Чем вы занимаетесь?",
+		"Как вы узнали о нас?",
 	}
 }
 
@@ -698,7 +698,7 @@ func (h *AdminHandler) handleTextCommand(ctx context.Context, u *models.User, te
 	case strings.HasPrefix(text, "/setwelcome "):
 		msg := strings.TrimPrefix(text, "/setwelcome ")
 		h.settingsRepo.Set(ctx, models.SettingWelcomeMessage, msg)
-		h.base.send(ctx, u.VKID, "вњ… РџСЂРёРІРµС‚СЃС‚РІРµРЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РѕР±РЅРѕРІР»РµРЅРѕ.", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "✅ Приветственное сообщение обновлено.", keyboards.AdminMenu())
 		h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{
 			ActorID: u.VKID, Action: "set_welcome", Details: msg,
 		})
@@ -716,7 +716,7 @@ func (h *AdminHandler) handleTextCommand(ctx context.Context, u *models.User, te
 		}
 		targetID, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.userSvc.Unban(ctx, targetID)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("вњ… РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ %d СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°РЅ.", targetID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Пользователь %d разблокирован.", targetID), keyboards.AdminMenu())
 
 	case strings.HasPrefix(text, "/addmod "):
 		parts := strings.Fields(text)
@@ -725,7 +725,7 @@ func (h *AdminHandler) handleTextCommand(ctx context.Context, u *models.User, te
 		}
 		targetID, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.userSvc.SetRole(ctx, targetID, models.RoleModerator)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("вњ… РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ %d РЅР°Р·РЅР°С‡РµРЅ РјРѕРґРµСЂР°С‚РѕСЂРѕРј.", targetID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Пользователь %d назначен модератором.", targetID), keyboards.AdminMenu())
 
 	case strings.HasPrefix(text, "/delmod "):
 		parts := strings.Fields(text)
@@ -734,7 +734,7 @@ func (h *AdminHandler) handleTextCommand(ctx context.Context, u *models.User, te
 		}
 		targetID, _ := strconv.ParseInt(parts[1], 10, 64)
 		h.userSvc.SetRole(ctx, targetID, models.RoleUser)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("вњ… РњРѕРґРµСЂР°С‚РѕСЂ %d РїРѕРЅРёР¶РµРЅ РґРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.", targetID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Модератор %d понижен до пользователя.", targetID), keyboards.AdminMenu())
 
 	case strings.HasPrefix(text, "/setlimit "):
 		// /setlimit <vk_id> <count>
@@ -745,17 +745,17 @@ func (h *AdminHandler) handleTextCommand(ctx context.Context, u *models.User, te
 		targetID, _ := strconv.ParseInt(parts[1], 10, 64)
 		limit, _ := strconv.Atoi(parts[2])
 		h.userSvc.SetRequestLimit(ctx, targetID, limit)
-		h.base.send(ctx, u.VKID, fmt.Sprintf("вњ… Р›РёРјРёС‚ %d Р·Р°РїСЂРѕСЃРѕРІ СѓСЃС‚Р°РЅРѕРІР»РµРЅ РґР»СЏ %d.", limit, targetID), keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, fmt.Sprintf("✅ Лимит %d запросов установлен для %d.", limit, targetID), keyboards.AdminMenu())
 
 	case strings.EqualFold(strings.TrimSpace(text), "/clear_mirror"):
-		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Р—РµСЂРєР°Р»Рѕ")
+		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Зеркало")
 
 	case strings.EqualFold(strings.TrimSpace(text), "/clear_map"):
-		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "РљР°СЂС‚Р°")
+		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "Карта")
 
 	default:
-		// РџРѕРєР°Р·С‹РІР°РµРј РјРµРЅСЋ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°
-		h.base.send(ctx, u.VKID, "рџ‘‘ РџР°РЅРµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°", keyboards.AdminMenu())
+		// Показываем меню администратора
+		h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
 	}
 }
 
@@ -764,11 +764,11 @@ func (h *AdminHandler) handleEditSettingStart(ctx context.Context, u *models.Use
 		Key string `json:"key"`
 	}
 	if err := json.Unmarshal([]byte(payloadJSON), &p); err != nil || strings.TrimSpace(p.Key) == "" {
-		h.base.send(ctx, u.VKID, "РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РЅР°СЃС‚СЂРѕР№РєСѓ.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "Не удалось определить настройку.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 	if !isEditableSettingKey(p.Key) {
-		h.base.send(ctx, u.VKID, "Р­С‚Сѓ РЅР°СЃС‚СЂРѕР№РєСѓ РЅРµР»СЊР·СЏ РјРµРЅСЏС‚СЊ РёР· РїР°РЅРµР»Рё.", keyboards.AdminSettingsEditorMenu())
+		h.base.send(ctx, u.VKID, "Эту настройку нельзя менять из панели.", keyboards.AdminSettingsEditorMenu())
 		return
 	}
 
@@ -777,7 +777,7 @@ func (h *AdminHandler) handleEditSettingStart(ctx context.Context, u *models.Use
 		if filePrompt, err := os.ReadFile(fileName); err == nil && strings.TrimSpace(string(filePrompt)) != "" {
 			current = strings.TrimSpace(string(filePrompt))
 		} else {
-			current = fmt.Sprintf("(РїСѓСЃС‚Рѕ: СЃРµР№С‡Р°СЃ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїСЂРѕРјРїС‚ РёР· С„Р°Р№Р»Р° %s)", fileName)
+			current = fmt.Sprintf("(пусто: сейчас используется промпт из файла %s)", fileName)
 		}
 	}
 
@@ -785,7 +785,7 @@ func (h *AdminHandler) handleEditSettingStart(ctx context.Context, u *models.Use
 	h.base.send(
 		ctx,
 		u.VKID,
-		fmt.Sprintf("Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ `%s`\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ:\n%s\n\nРџСЂРёС€Р»РёС‚Рµ РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј РёР»Рё TXT-С„Р°Р№Р»РѕРј.", p.Key, current),
+		fmt.Sprintf("Редактирование `%s`\nТекущее значение:\n%s\n\nПришлите новое значение одним сообщением или TXT-файлом.", p.Key, current),
 		keyboards.BackOnly(),
 	)
 }
@@ -795,7 +795,7 @@ func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, t
 	value := strings.TrimSpace(text)
 	if key == "" {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РєР»СЋС‡ РЅР°СЃС‚СЂРѕР№РєРё.", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "Не удалось определить ключ настройки.", keyboards.AdminMenu())
 		return
 	}
 
@@ -807,15 +807,15 @@ func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, t
 
 	if value == "" {
 		if isPromptSettingKey(key) {
-			h.base.send(ctx, u.VKID, "РћС‚РїСЂР°РІСЊС‚Рµ С‚РµРєСЃС‚ РёР»Рё TXT-С„Р°Р№Р» СЃ РЅРѕРІС‹Рј РїСЂРѕРјРїС‚РѕРј.", keyboards.BackOnly())
+			h.base.send(ctx, u.VKID, "Отправьте текст или TXT-файл с новым промптом.", keyboards.BackOnly())
 			return
 		}
-		h.base.send(ctx, u.VKID, "РџСѓСЃС‚РѕРµ Р·РЅР°С‡РµРЅРёРµ РЅРµ СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ.", keyboards.BackOnly())
+		h.base.send(ctx, u.VKID, "Пустое значение не сохраняется.", keyboards.BackOnly())
 		return
 	}
 
 	if err := h.settingsRepo.Set(ctx, key, value); err != nil {
-		h.base.send(ctx, u.VKID, "РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ.", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "Ошибка сохранения.", keyboards.AdminMenu())
 		return
 	}
 
@@ -825,7 +825,7 @@ func (h *AdminHandler) handleSettingInput(ctx context.Context, u *models.User, t
 		Action:  "set_setting",
 		Details: fmt.Sprintf("key=%s", key),
 	})
-	h.base.send(ctx, u.VKID, fmt.Sprintf("РќР°СЃС‚СЂРѕР№РєР° `%s` РѕР±РЅРѕРІР»РµРЅР°.", key), keyboards.AdminSettingsEditorMenu())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("Настройка `%s` обновлена.", key), keyboards.AdminSettingsEditorMenu())
 }
 
 func extractTxtAttachmentContent(msg object.MessagesMessage) (string, bool) {
@@ -892,28 +892,28 @@ func promptFileNameBySetting(key string) string {
 }
 
 func (h *AdminHandler) handleAccessDecision(ctx context.Context, actor *models.User, msg object.MessagesMessage, approve bool) {
-	// Р§РёС‚Р°РµРј req_id Рё vk_id РёР· payload РєРЅРѕРїРєРё
+	// Читаем req_id и vk_id из payload кнопки
 	var payload struct {
 		ReqID int64 `json:"req_id"`
 		VKID  int64 `json:"vk_id"`
 	}
 	if err := json.Unmarshal([]byte(msg.Payload), &payload); err != nil || payload.ReqID == 0 {
-		h.base.send(ctx, actor.VKID, "вќЊ РћС€РёР±РєР°: РЅРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ РґР°РЅРЅС‹Рµ Р·Р°СЏРІРєРё.", keyboards.AdminMenu())
+		h.base.send(ctx, actor.VKID, "❌ Ошибка: не удалось прочитать данные заявки.", keyboards.AdminMenu())
 		return
 	}
 
 	if approve {
 		applicantVKID, err := h.userSvc.ApproveAccessRequest(ctx, payload.ReqID)
 		if err != nil {
-			h.base.send(ctx, actor.VKID, "вќЊ РћС€РёР±РєР° РѕРґРѕР±СЂРµРЅРёСЏ: "+err.Error(), keyboards.AdminMenu())
+			h.base.send(ctx, actor.VKID, "❌ Ошибка одобрения: "+err.Error(), keyboards.AdminMenu())
 			return
 		}
 		h.base.send(ctx, actor.VKID,
-			fmt.Sprintf("вњ… Р—Р°СЏРІРєР° #%d РѕРґРѕР±СЂРµРЅР°. РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ [id%d|Р°РєС‚РёРІРёСЂРѕРІР°РЅ].", payload.ReqID, applicantVKID),
+			fmt.Sprintf("✅ Заявка #%d одобрена. Пользователь [id%d|активирован].", payload.ReqID, applicantVKID),
 			keyboards.AdminMenu())
-		// РЈРІРµРґРѕРјР»СЏРµРј Р·Р°СЏРІРёС‚РµР»СЏ
+		// Уведомляем заявителя
 		h.base.send(ctx, applicantVKID,
-			"рџЋ‰ Р’Р°С€Р° Р·Р°СЏРІРєР° РѕРґРѕР±СЂРµРЅР°! РќР°РїРёС€РёС‚Рµ С‡С‚Рѕ-РЅРёР±СѓРґСЊ С‡С‚РѕР±С‹ РЅР°С‡Р°С‚СЊ.",
+			"🎉 Ваша заявка одобрена! Напишите что-нибудь чтобы начать.",
 			keyboards.Empty())
 		h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{
 			ActorID: actor.VKID, TargetID: &applicantVKID, Action: "approve_request",
@@ -922,16 +922,16 @@ func (h *AdminHandler) handleAccessDecision(ctx context.Context, actor *models.U
 	} else {
 		applicantVKID, err := h.userSvc.RejectAccessRequest(ctx, payload.ReqID)
 		if err != nil {
-			h.base.send(ctx, actor.VKID, "вќЊ РћС€РёР±РєР° РѕС‚РєР»РѕРЅРµРЅРёСЏ: "+err.Error(), keyboards.AdminMenu())
+			h.base.send(ctx, actor.VKID, "❌ Ошибка отклонения: "+err.Error(), keyboards.AdminMenu())
 			return
 		}
 		h.base.send(ctx, actor.VKID,
-			fmt.Sprintf("вќЊ Р—Р°СЏРІРєР° #%d РѕС‚РєР»РѕРЅРµРЅР°.", payload.ReqID),
+			fmt.Sprintf("❌ Заявка #%d отклонена.", payload.ReqID),
 			keyboards.AdminMenu())
-		// РЈРІРµРґРѕРјР»СЏРµРј Р·Р°СЏРІРёС‚РµР»СЏ
+		// Уведомляем заявителя
 		if applicantVKID > 0 {
 			h.base.send(ctx, applicantVKID,
-				"рџ” Р’Р°С€Р° Р·Р°СЏРІРєР° РЅР° РІСЃС‚СѓРїР»РµРЅРёРµ РѕС‚РєР»РѕРЅРµРЅР°.",
+				"😔 Ваша заявка на вступление отклонена.",
 				keyboards.Empty())
 		}
 		h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{
@@ -942,7 +942,7 @@ func (h *AdminHandler) handleAccessDecision(ctx context.Context, actor *models.U
 }
 
 func (h *AdminHandler) handleBanCommand(ctx context.Context, u *models.User, text string, isCooldown bool) {
-	// /ban <vk_id> РёР»Рё /cool <vk_id> <minutes>
+	// /ban <vk_id> или /cool <vk_id> <minutes>
 	parts := strings.Fields(text)
 	if len(parts) < 2 {
 		return
@@ -960,9 +960,9 @@ func (h *AdminHandler) handleBanCommand(ctx context.Context, u *models.User, tex
 	}
 
 	h.userSvc.Ban(ctx, u.VKID, targetID, until)
-	msg := fmt.Sprintf("вњ… РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ %d Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ.", targetID)
+	msg := fmt.Sprintf("✅ Пользователь %d заблокирован.", targetID)
 	if until != nil {
-		msg = fmt.Sprintf("вќ„пёЏ РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ %d РІ РѕС…Р»Р°Р¶РґРµРЅРёРё РґРѕ %s.", targetID, until.Format("02.01 15:04"))
+		msg = fmt.Sprintf("❄️ Пользователь %d в охлаждении до %s.", targetID, until.Format("02.01 15:04"))
 	}
 	h.base.send(ctx, u.VKID, msg, keyboards.AdminMenu())
 	h.settingsRepo.WriteAuditLog(ctx, &models.AuditLog{
@@ -973,7 +973,7 @@ func (h *AdminHandler) handleBanCommand(ctx context.Context, u *models.User, tex
 func fmtDuration(d time.Duration) string {
 	h := int(d.Hours())
 	m := int(d.Minutes()) % 60
-	return fmt.Sprintf("%dС‡ %dРј", h, m)
+	return fmt.Sprintf("%dч %dм", h, m)
 }
 
 func (h *AdminHandler) logAudit(ctx context.Context, actorID, targetID int64, action, details string) {
@@ -985,25 +985,25 @@ func (h *AdminHandler) logAudit(ctx context.Context, actorID, targetID int64, ac
 	})
 }
 
-// handleAIChat вЂ” AI-РґРёР°Р»РѕРі РґР»СЏ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР° (Р°РЅР°Р»РѕРі user.go, РЅРѕ Р±РµР· Р»РёРјРёС‚РѕРІ)
+// handleAIChat — AI-диалог для администратора (аналог user.go, но без лимитов)
 func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg object.MessagesMessage, cmd, text string) {
 	if cmd == "back" || cmd == "admin_panel" {
 		h.userSvc.UpdateState(ctx, u.VKID, "")
-		h.base.send(ctx, u.VKID, "рџ‘‘ РџР°РЅРµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°", keyboards.AdminMenu())
+		h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
 		return
 	}
 	switch strings.TrimSpace(strings.ToLower(text)) {
-	case strings.ToLower("РћС‡РёСЃС‚РёС‚СЊ Р—РµСЂРєР°Р»Рѕ"):
-		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Р—РµСЂРєР°Р»Рѕ")
+	case strings.ToLower("Очистить Зеркало"):
+		h.clearAdminDialogHistory(ctx, u, models.DialogMain, "Зеркало")
 		return
-	case strings.ToLower("РћС‡РёСЃС‚РёС‚СЊ РљР°СЂС‚Сѓ"):
-		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "РљР°СЂС‚Р°")
+	case strings.ToLower("Очистить Карту"):
+		h.clearAdminDialogHistory(ctx, u, models.DialogMap, "Карта")
 		return
 	}
 	if u.State == models.StateSupport {
 		if cmd == "back" {
 			h.userSvc.UpdateState(ctx, u.VKID, "")
-			h.base.send(ctx, u.VKID, "рџ‘‘ РџР°РЅРµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°", keyboards.AdminMenu())
+			h.base.send(ctx, u.VKID, "👑 Панель администратора", keyboards.AdminMenu())
 			return
 		}
 		dialog, _ := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, models.DialogSupport)
@@ -1011,7 +1011,7 @@ func (h *AdminHandler) handleAIChat(ctx context.Context, u *models.User, msg obj
 			DialogID: dialog.ID, UserID: u.ID,
 			Role: models.MessageRoleUser, Type: models.MessageTypeText, Content: text,
 		})
-		h.base.send(ctx, u.VKID, "вњ… РЎРѕРѕР±С‰РµРЅРёРµ СЃРѕС…СЂР°РЅРµРЅРѕ РІ РїРѕРґРґРµСЂР¶РєРµ.", keyboards.BackOnly())
+		h.base.send(ctx, u.VKID, "✅ Сообщение сохранено в поддержке.", keyboards.BackOnly())
 		return
 	}
 
@@ -1100,12 +1100,12 @@ func (h *AdminHandler) adminDialogTypeForState(state models.BotState) models.Dia
 func (h *AdminHandler) clearAdminDialogHistory(ctx context.Context, u *models.User, dtype models.DialogType, title string) {
 	dialog, err := h.dialogRepo.GetOrCreateDialog(ctx, u.ID, dtype)
 	if err != nil {
-		h.base.send(ctx, u.VKID, "РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РґРёР°Р»РѕРі РґР»СЏ РѕС‡РёСЃС‚РєРё.", keyboards.AdminChatMenu())
+		h.base.send(ctx, u.VKID, "Не удалось получить диалог для очистки.", keyboards.AdminChatMenu())
 		return
 	}
 	if err := h.dialogRepo.ClearHistory(ctx, dialog.ID); err != nil {
-		h.base.send(ctx, u.VKID, "РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‡РёСЃС‚РёС‚СЊ РёСЃС‚РѕСЂРёСЋ.", keyboards.AdminChatMenu())
+		h.base.send(ctx, u.VKID, "Не удалось очистить историю.", keyboards.AdminChatMenu())
 		return
 	}
-	h.base.send(ctx, u.VKID, fmt.Sprintf("РСЃС‚РѕСЂРёСЏ С‡Р°С‚Р° \"%s\" РѕС‡РёС‰РµРЅР°.", title), keyboards.AdminChatMenu())
+	h.base.send(ctx, u.VKID, fmt.Sprintf("История чата \"%s\" очищена.", title), keyboards.AdminChatMenu())
 }
